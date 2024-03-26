@@ -8,17 +8,17 @@ import (
 	"os"
 )
 
-type Db struct {
+type DB struct {
 	f *os.File
 }
 
-func New(f *os.File) *Db {
-	return &Db{
+func New(f *os.File) *DB {
+	return &DB{
 		f: f,
 	}
 }
 
-func (d *Db) Set(ctx context.Context, data Row) error {
+func (d *DB) Set(ctx context.Context, data Row) error {
 	var b []byte
 
 	buf := bytes.NewBuffer(b)
@@ -41,7 +41,7 @@ type Row interface{}
 
 var readBlockSize int64 = 4096
 
-func (d *Db) Get(ctx context.Context, id string) ([]byte, bool, error) {
+func (d *DB) Get(ctx context.Context, id string) ([]byte, bool, error) {
 	stat, err := d.f.Stat()
 	if err != nil {
 		return nil, false, fmt.Errorf("stat file %s: %w", d.f.Name(), err)
