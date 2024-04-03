@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log/slog"
 )
 
 const separator byte = '\n'
@@ -14,9 +13,12 @@ func (d *DB) Set(ctx context.Context, table string, data any) error {
 	if err != nil {
 		return fmt.Errorf("marshal data: %w", err)
 	}
-	slog.InfoContext(ctx, string(enc))
 
-	_, err = d.f.Write(append(enc, separator))
+	f, err := fileWriter(table)
+	if err != nil {
+		return fmt.Errorf("access storage: %w", err)
+	}
+	_, err = f.Write(append(enc, separator))
 	if err != nil {
 		return fmt.Errorf("write data: %w", err)
 	}

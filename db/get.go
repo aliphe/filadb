@@ -9,9 +9,14 @@ import (
 var readBlockSize int64 = 4096
 
 func (d *DB) Get(ctx context.Context, table, id string) (any, bool, error) {
-	stat, err := d.f.Stat()
+	f, err := fileReader(table)
 	if err != nil {
-		return nil, false, fmt.Errorf("stat file %s: %w", d.f.Name(), err)
+		return nil, false, fmt.Errorf("access storage: %w", err)
+	}
+
+	stat, err := f.Stat()
+	if err != nil {
+		return nil, false, fmt.Errorf("stat file %s: %w", f.Name(), err)
 	}
 
 	s := stat.Size()
@@ -24,9 +29,9 @@ func (d *DB) Get(ctx context.Context, table, id string) (any, bool, error) {
 		rs := min(readBlockSize, s-off)
 		buf := make([]byte, rs)
 
-		_, err := d.f.ReadAt(buf, off)
+		_, err := f.ReadAt(buf, off)
 		if err != nil {
-			return nil, false, fmt.Errorf("read file %s at offset %d: %w", d.f.Name(), s, err)
+			return nil, false, fmt.Errorf("read file %s at offset %d: %w", f.Name(), s, err)
 		}
 
 		lines, r := split(append(rest, buf...), rune(separator))

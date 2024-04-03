@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"fmt"
-	"os"
 	"testing"
 )
 
@@ -24,11 +23,7 @@ func Test_Set(t *testing.T) {
 		},
 	}
 
-	f, err := os.OpenFile("db.txt", os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
-	if err != nil {
-		t.Errorf("open db file: %v", err.Error())
-	}
-	db := New(f)
+	db := New()
 
 	for _, tc := range tests {
 		err := db.Set(context.Background(), "table", tc.ins)
