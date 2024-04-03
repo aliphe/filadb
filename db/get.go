@@ -3,7 +3,9 @@ package db
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"os"
 )
 
 var readBlockSize int64 = 4096
@@ -11,6 +13,9 @@ var readBlockSize int64 = 4096
 func (d *DB) Get(ctx context.Context, table, id string) (any, bool, error) {
 	f, err := fileReader(table)
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, false, fmt.Errorf("access %s: %w", table, ErrTableNotFound)
+		}
 		return nil, false, fmt.Errorf("access storage: %w", err)
 	}
 

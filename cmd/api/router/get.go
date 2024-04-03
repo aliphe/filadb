@@ -1,6 +1,7 @@
 package router
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -8,7 +9,7 @@ import (
 	"github.com/aliphe/filadb/db"
 )
 
-func get(db *db.DB) http.HandlerFunc {
+func get(d *db.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -26,8 +27,12 @@ func get(db *db.DB) http.HandlerFunc {
 			return
 		}
 
-		res, found, err := db.Get(r.Context(), table, id)
+		res, found, err := d.Get(r.Context(), table, id)
 		if err != nil {
+			if errors.Is(err, db.ErrTableNotFound) {
+				w.WriteHeader(http.StatusNotFound)
+				fmt.Fprintf(w, "table %s not found", table)
+			}
 			slog.ErrorContext(ctx, fmt.Sprintf("db get: %v", err))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
