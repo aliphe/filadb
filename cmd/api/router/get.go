@@ -8,13 +8,6 @@ import (
 	"github.com/aliphe/filadb/db"
 )
 
-type opType string
-
-type query struct {
-	Table string `json:"table"`
-	ID    string `json:"id"`
-}
-
 func get(db *db.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()

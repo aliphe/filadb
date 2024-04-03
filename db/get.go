@@ -29,7 +29,7 @@ func (d *DB) Get(ctx context.Context, table, id string) (any, bool, error) {
 			return nil, false, fmt.Errorf("read file %s at offset %d: %w", d.f.Name(), s, err)
 		}
 
-		lines, r := split(append(rest, buf...), '\n')
+		lines, r := split(append(rest, buf...), rune(separator))
 		rest = r
 
 		row, found, err := seek(lines, id)

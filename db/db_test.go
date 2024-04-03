@@ -31,7 +31,7 @@ func Test_Set(t *testing.T) {
 	db := New(f)
 
 	for _, tc := range tests {
-		err := db.Set(context.Background(), tc.ins)
+		err := db.Set(context.Background(), "table", tc.ins)
 		if err != nil {
 			t.Fatal(err)
 		}
