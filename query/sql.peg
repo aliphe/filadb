@@ -1,8 +1,0 @@
-query = select/insert
-select = "SELECT" w+ (token"," w+)* token w+ source w* filter?
-filter = "WHERE" w+ token w+ op +w token
-insert = "INSERT" w+
-w = " "
-source = "FROM" w+ token
-token = [a-z/0-9/']+
-op = "="

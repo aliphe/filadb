@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 
@@ -24,5 +25,6 @@ func main() {
 	db := db.New(f)
 	r := router.Init(db, router.WithVersion(*version))
 
+	slog.Info("http server ready", slog.String("port", "3000"))
 	http.ListenAndServe(":3000", r)
 }

@@ -2,14 +2,12 @@ package db
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"testing"
 )
 
 func Test_Set(t *testing.T) {
-
 	type row struct {
 		ID   string `json:"id"`
 		Name string `json:"name"`
@@ -37,19 +35,14 @@ func Test_Set(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		r, f, err := db.Get(context.Background(), tc.ins.ID)
+		r, f, err := db.Get(context.Background(), "table", tc.ins.ID)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if f != true {
 			t.Fatal("inserted row now found")
 		}
-		var ins row
-		err = json.Unmarshal(r, &ins)
-		if err != nil {
-			t.Fatal("invalid inserted row")
-		}
-		t.Logf("row: %v", ins)
+		t.Logf("row: %v", r)
 	}
 }
 

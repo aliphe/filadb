@@ -29,7 +29,7 @@ func Init(db *db.DB, opts ...Option) *chi.Mux {
 		w.Write([]byte("OK"))
 	})
 
-	r.Post("/", op(db))
+	r.Get("/", get(db))
 
 	return r
 }
