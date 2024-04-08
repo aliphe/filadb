@@ -2,161 +2,179 @@ package btree
 
 import (
 	"cmp"
+	"context"
 	"fmt"
 	"slices"
 )
 
-type k interface {
+type Key interface {
 	cmp.Ordered
 }
 
-type nodeAccessor[K k] interface {
-	Get() (*node[K], error)
+type KeyVal[K Key] struct {
+	Key K
+	Val []byte
 }
 
-type keyVal[K k] struct {
-	key K
-	val []byte
+type NodeID string
+
+type Ref[K Key] struct {
+	From *K
+	To   *K
+	N    NodeID
 }
 
-type ref[K k] struct {
-	from *K
-	to   *K
-	n    nodeAccessor[K]
+type Node[K Key] interface {
+	ID() NodeID
+	Leaf() bool
+	Value(key K) (*KeyVal[K], bool)
+	Refs() []*Ref[K]
+	Keys() []*KeyVal[K]
 }
 
-func (n *node[K]) leaf() bool {
-	return len(n.keys) > 0
+type nodeStore[K Key] interface {
+	Leaf(context.Context, []*KeyVal[K]) (Node[K], error)
+	NonLeaf(context.Context, []*Ref[K]) (Node[K], error)
+	Find(context.Context, NodeID) (Node[K], bool, error)
 }
 
-type node[K k] struct {
-	keys []*keyVal[K]
-	refs []*ref[K]
-}
-
-type BTree[K k] struct {
+type BTree[K Key] struct {
 	order int
-	root  *node[K]
+	root  Node[K]
+	store nodeStore[K]
 }
 
-func NewBTree[K k](order int) *BTree[K] {
+func New[K Key](order int, store nodeStore[K]) *BTree[K] {
 	return &BTree[K]{
 		order: order,
 		root:  nil,
+		store: store,
 	}
 }
 
-func leaf[K k](kv []*keyVal[K]) *node[K] {
-	return &node[K]{
-		keys: kv,
-		refs: nil,
-	}
-}
-
-func nonLeaf[K k](refs []*ref[K]) *node[K] {
-	return &node[K]{
-		keys: nil,
-		refs: refs,
-	}
-}
-
-func (b *BTree[K]) Add(key K, val []byte) error {
+func (b *BTree[K]) Add(ctx context.Context, key K, val []byte) error {
 	if b.root == nil {
-		b.root = leaf([]*keyVal[K]{{
-			key: key,
-			val: val,
+		root, err := b.store.Leaf(ctx, []*KeyVal[K]{{
+			Key: key,
+			Val: val,
 		}})
+		if err != nil {
+			return fmt.Errorf("create root node: %w", err)
+		}
+		b.root = root
 		return nil
 	}
 
-	newRoot, err := b.insert(b.root, &keyVal[K]{
-		key: key,
-		val: val,
+	newRoot, err := b.insert(ctx, b.root, &KeyVal[K]{
+		Key: key,
+		Val: val,
 	})
 	if err != nil {
 		return fmt.Errorf("insert key: %w", err)
 	}
 
 	if newRoot != nil {
-		b.root = nonLeaf[K](newRoot)
+		root, err := b.store.NonLeaf(ctx, newRoot)
+		if err != nil {
+			return fmt.Errorf("create new root node: %w", err)
+		}
+		b.root = root
 	}
 
 	return nil
 }
 
-func findNode[K k](refs []*ref[K], k K) (*node[K], error) {
-	var ref *ref[K]
+func (b *BTree[K]) findNode(ctx context.Context, refs []*Ref[K], k K) (Node[K], error) {
+	var ref *Ref[K]
 	for _, r := range refs {
-		if r.to == nil || *r.to > k {
+		if r.To == nil || *r.To > k {
 			ref = r
 		}
 	}
 
-	return ref.n.Get()
+	node, ok, err := b.store.Find(ctx, ref.N)
+	if err != nil {
+		return nil, fmt.Errorf("following node ref: %w", err)
+	}
+	if !ok {
+		return nil, fmt.Errorf("%w: %w", ErrTreeCorrupted, err)
+	}
+
+	return node, nil
 }
 
-func (b *BTree[K]) insert(n *node[K], kv *keyVal[K]) ([]*ref[K], error) {
-	var movingUp []*ref[K]
-	if !n.leaf() {
-		r, err := findNode[K](n.refs, kv.key)
+func (b *BTree[K]) insert(ctx context.Context, n Node[K], kv *KeyVal[K]) ([]*Ref[K], error) {
+	var keys []*KeyVal[K]
+	var refs []*Ref[K]
+
+	var movingUp []*Ref[K]
+	if !n.Leaf() {
+		r, err := b.findNode(ctx, n.Refs(), kv.Key)
 		if err != nil {
 			return nil, fmt.Errorf("find node to insert value: %w", err)
 		}
 
-		movingUp, err = b.insert(r, kv)
+		movingUp, err = b.insert(ctx, r, kv)
 		if err != nil {
-			// we don't know how many recursion we had, don't want to wrap too much
 			return nil, err
 		}
 	} else {
-		n.keys = append(n.keys, kv)
-		slices.SortFunc(n.keys, func(a, b *keyVal[K]) int {
-			return cmp.Compare(a.key, b.key)
+		keys = append(n.Keys(), kv)
+		slices.SortFunc(keys, func(a, b *KeyVal[K]) int {
+			return cmp.Compare(a.Key, b.Key)
 		})
 	}
 
 	if movingUp != nil {
-		n.refs = insertRefs[K](n.refs, movingUp)
+		refs = insertRefs[K](n.Refs(), movingUp)
 	}
 
-	if len(n.keys) > b.order {
+	if len(keys) > b.order {
 		mid := (b.order + 1) / 2
-		leaves := []*node[K]{
-			leaf[K](n.keys[:mid]),
-			leaf[K](n.keys[mid:]),
+		left, err := b.store.Leaf(ctx, keys[:mid])
+		if err != nil {
+			return nil, fmt.Errorf("split node: %w", err)
+		}
+		right, err := b.store.Leaf(ctx, keys[mid:])
+		if err != nil {
+			return nil, fmt.Errorf("split node: %w", err)
 		}
 
-		return []*ref[K]{
+		return []*Ref[K]{
 			{
-				from: nil,
-				to:   &n.keys[mid].key,
-				n:    newInMemory(leaves[0]),
+				From: nil,
+				To:   &keys[mid].Key,
+				N:    left.ID(),
 			},
 			{
-				from: &n.keys[mid].key,
-				to:   nil,
-				n:    newInMemory(leaves[1]),
+				From: &keys[mid].Key,
+				To:   nil,
+				N:    right.ID(),
 			},
 		}, nil
 	}
 
-	if len(n.refs) > b.order {
+	if len(refs) > b.order {
 		mid := (b.order + 1) / 2
-		nonLeaves := []*node[K]{
-			nonLeaf[K](n.refs[:mid]),
-			nonLeaf[K](n.refs[mid:]),
+		left, err := b.store.NonLeaf(ctx, refs[:mid])
+		if err != nil {
+			return nil, fmt.Errorf("split node: %w", err)
+		}
+		right, err := b.store.NonLeaf(ctx, refs[mid:])
+		if err != nil {
+			return nil, fmt.Errorf("split node: %w", err)
 		}
 
-		return []*ref[K]{
+		return []*Ref[K]{
 			{
-				from: nil,
-				to:   n.refs[mid].from,
-				n:    newInMemory(nonLeaves[0]),
+				From: nil,
+				To:   refs[mid].From,
+				N:    left.ID(),
 			},
 			{
-				from: n.refs[mid].from,
-				to:   nil,
-				n:    newInMemory(nonLeaves[1]),
+				From: refs[mid].To,
+				To:   nil,
+				N:    right.ID(),
 			},
 		}, nil
 	}
@@ -164,35 +182,21 @@ func (b *BTree[K]) insert(n *node[K], kv *keyVal[K]) ([]*ref[K], error) {
 	return nil, nil
 }
 
-type inMemoryNodeAccessor[K k] struct {
-	node *node[K]
-}
-
-func newInMemory[K k](node *node[K]) *inMemoryNodeAccessor[K] {
-	return &inMemoryNodeAccessor[K]{
-		node,
-	}
-}
-
-func (i *inMemoryNodeAccessor[K]) Get() (*node[K], error) {
-	return i.node, nil
-}
-
-func insertRefs[K k](refs []*ref[K], new []*ref[K]) []*ref[K] {
-	var merged []*ref[K]
+func insertRefs[K Key](refs []*Ref[K], new []*Ref[K]) []*Ref[K] {
+	var merged []*Ref[K]
 
 	for _, curr := range refs {
-		if (curr.from == nil || *new[0].to > *curr.from) &&
-			(curr.to == nil || *new[0].to < *curr.to) {
+		if (curr.From == nil || *new[0].To > *curr.From) &&
+			(curr.To == nil || *new[0].To < *curr.To) {
 
-			merged = append(merged, &ref[K]{
-				from: curr.from,
-				to:   new[0].to,
-				n:    new[0].n,
-			}, &ref[K]{
-				from: new[0].to, // or new[1].from
-				to:   curr.to,
-				n:    new[1].n,
+			merged = append(merged, &Ref[K]{
+				From: curr.From,
+				To:   new[0].To,
+				N:    new[0].N,
+			}, &Ref[K]{
+				From: new[0].To, // or new[1].from
+				To:   curr.To,
+				N:    new[1].N,
 			})
 		} else {
 			merged = append(merged, curr)
