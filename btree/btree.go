@@ -25,8 +25,7 @@ type Ref[K Key] struct {
 }
 
 type nodeStore[K Key] interface {
-	Leaf(context.Context, []*KeyVal[K]) (*Node[K], error)
-	NonLeaf(context.Context, []*Ref[K]) (*Node[K], error)
+	Save(context.Context, *Node[K]) error
 	Find(context.Context, NodeID) (*Node[K], bool, error)
 }
 
@@ -46,13 +45,14 @@ func New[K Key](order int, store nodeStore[K]) *BTree[K] {
 
 func (b *BTree[K]) Add(ctx context.Context, key K, val []byte) error {
 	if b.root == nil {
-		root, err := b.store.Leaf(ctx, []*KeyVal[K]{{
+		root := leaf([]*KeyVal[K]{{
 			Key: key,
 			Val: val,
 		}})
-		if err != nil {
-			return fmt.Errorf("create root node: %w", err)
+		if err := b.store.Save(ctx, root); err != nil {
+			return fmt.Errorf("save root node: %w", err)
 		}
+
 		b.root = root
 		return nil
 	}
@@ -66,8 +66,8 @@ func (b *BTree[K]) Add(ctx context.Context, key K, val []byte) error {
 	}
 
 	if newRoot != nil {
-		root, err := b.store.NonLeaf(ctx, newRoot)
-		if err != nil {
+		root := nonLeaf(newRoot)
+		if err := b.store.Save(ctx, root); err != nil {
 			return fmt.Errorf("create new root node: %w", err)
 		}
 		b.root = root
@@ -76,9 +76,9 @@ func (b *BTree[K]) Add(ctx context.Context, key K, val []byte) error {
 	return nil
 }
 
-func (b *BTree[K]) findNode(ctx context.Context, refs []*Ref[K], k K) (*Node[K], error) {
+func (b *BTree[K]) findInNode(ctx context.Context, n *Node[K], k K) (*Node[K], error) {
 	var ref *Ref[K]
-	for _, r := range refs {
+	for _, r := range n.Refs() {
 		if r.To == nil || *r.To > k {
 			ref = r
 		}
@@ -96,12 +96,12 @@ func (b *BTree[K]) findNode(ctx context.Context, refs []*Ref[K], k K) (*Node[K],
 }
 
 func (b *BTree[K]) insert(ctx context.Context, n *Node[K], kv *KeyVal[K]) ([]*Ref[K], error) {
-	var keys []*KeyVal[K]
-	var refs []*Ref[K]
+	var keys []*KeyVal[K] = n.Keys()
+	var refs []*Ref[K] = n.Refs()
 
 	var movingUp []*Ref[K]
 	if !n.Leaf() {
-		r, err := b.findNode(ctx, n.Refs(), kv.Key)
+		r, err := b.findInNode(ctx, n, kv.Key)
 		if err != nil {
 			return nil, fmt.Errorf("find node to insert value: %w", err)
 		}
@@ -110,6 +110,10 @@ func (b *BTree[K]) insert(ctx context.Context, n *Node[K], kv *KeyVal[K]) ([]*Re
 		if err != nil {
 			return nil, err
 		}
+		if movingUp != nil {
+			refs = insertRefs[K](n.Refs(), movingUp)
+			movingUp = nil
+		}
 	} else {
 		keys = append(n.Keys(), kv)
 		slices.SortFunc(keys, func(a, b *KeyVal[K]) int {
@@ -117,18 +121,14 @@ func (b *BTree[K]) insert(ctx context.Context, n *Node[K], kv *KeyVal[K]) ([]*Re
 		})
 	}
 
-	if movingUp != nil {
-		refs = insertRefs[K](n.Refs(), movingUp)
-	}
-
 	if len(keys) > b.order {
 		mid := (b.order + 1) / 2
-		left, err := b.store.Leaf(ctx, keys[:mid])
-		if err != nil {
+		left := leaf(keys[:mid])
+		if err := b.store.Save(ctx, left); err != nil {
 			return nil, fmt.Errorf("split node: %w", err)
 		}
-		right, err := b.store.Leaf(ctx, keys[mid:])
-		if err != nil {
+		right := leaf(keys[mid:])
+		if err := b.store.Save(ctx, right); err != nil {
 			return nil, fmt.Errorf("split node: %w", err)
 		}
 
@@ -136,24 +136,25 @@ func (b *BTree[K]) insert(ctx context.Context, n *Node[K], kv *KeyVal[K]) ([]*Re
 			{
 				From: nil,
 				To:   &keys[mid].Key,
-				N:    left.id,
+				N:    left.ID(),
 			},
 			{
 				From: &keys[mid].Key,
 				To:   nil,
-				N:    right.id,
+				N:    right.ID(),
 			},
 		}, nil
 	}
 
 	if len(refs) > b.order {
 		mid := (b.order + 1) / 2
-		left, err := b.store.NonLeaf(ctx, refs[:mid])
-		if err != nil {
+		left := nonLeaf(refs[:mid])
+		if err := b.store.Save(ctx, left); err != nil {
 			return nil, fmt.Errorf("split node: %w", err)
 		}
-		right, err := b.store.NonLeaf(ctx, refs[mid:])
-		if err != nil {
+
+		right := nonLeaf(refs[mid:])
+		if err := b.store.Save(ctx, right); err != nil {
 			return nil, fmt.Errorf("split node: %w", err)
 		}
 
@@ -161,17 +162,20 @@ func (b *BTree[K]) insert(ctx context.Context, n *Node[K], kv *KeyVal[K]) ([]*Re
 			{
 				From: nil,
 				To:   refs[mid].From,
-				N:    left.id,
+				N:    left.ID(),
 			},
 			{
-				From: refs[mid].To,
+				From: refs[mid].From,
 				To:   nil,
-				N:    right.id,
+				N:    right.ID(),
 			},
 		}, nil
 	}
 
-	return nil, nil
+	n.SetKeys(keys)
+	n.SetRefs(refs)
+	b.store.Save(ctx, n)
+	return movingUp, nil
 }
 
 func insertRefs[K Key](refs []*Ref[K], new []*Ref[K]) []*Ref[K] {

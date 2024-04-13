@@ -2,7 +2,6 @@ package inmemory
 
 import (
 	"context"
-	"strconv"
 
 	"github.com/aliphe/filadb/btree"
 )
@@ -26,19 +25,10 @@ func groupKv[K btree.Key](kv []*btree.KeyVal[K]) map[K]*btree.KeyVal[K] {
 	return out
 }
 
-func (s *btreeStore[K]) Leaf(ctx context.Context, kv []*btree.KeyVal[K]) (*btree.Node[K], error) {
-	id := btree.NodeID(strconv.Itoa(len(s.db)))
-	n := btree.NewNode[K](id, kv, nil)
-	s.db[id] = n
-	return n, nil
+func (s *btreeStore[K]) Save(ctx context.Context, n *btree.Node[K]) error {
+	s.db[n.ID()] = n
+	return nil
 
-}
-
-func (s *btreeStore[K]) NonLeaf(ctx context.Context, refs []*btree.Ref[K]) (*btree.Node[K], error) {
-	id := btree.NodeID(strconv.Itoa(len(s.db)))
-	n := btree.NewNode[K](id, nil, refs)
-	s.db[id] = n
-	return n, nil
 }
 
 func (s *btreeStore[K]) Find(ctx context.Context, id btree.NodeID) (*btree.Node[K], bool, error) {

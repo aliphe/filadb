@@ -1,25 +1,37 @@
 package btree
 
+import "github.com/google/uuid"
+
 type Node[K Key] struct {
 	id   NodeID
-	keys map[K]*KeyVal[K]
+	keys []*KeyVal[K]
 	refs []*Ref[K]
 }
 
-func (n *Node[K]) ID() NodeID {
-	return n.ID()
+func newNodeID() NodeID {
+	return NodeID(uuid.New().String())
 }
 
-func NewNode[K Key](id NodeID, keys []*KeyVal[K], refs []*Ref[K]) *Node[K] {
-	km := make(map[K]*KeyVal[K], len(keys))
-	for _, k := range keys {
-		km[k.Key] = k
-	}
+func leaf[K Key](keys []*KeyVal[K]) *Node[K] {
+	id := newNodeID()
 	return &Node[K]{
 		id:   id,
-		keys: km,
+		keys: keys,
+		refs: nil,
+	}
+}
+
+func nonLeaf[K Key](refs []*Ref[K]) *Node[K] {
+	id := newNodeID()
+	return &Node[K]{
+		id:   id,
+		keys: nil,
 		refs: refs,
 	}
+}
+
+func (n *Node[K]) ID() NodeID {
+	return n.id
 }
 
 func (n *Node[K]) Leaf() bool {
@@ -27,8 +39,12 @@ func (n *Node[K]) Leaf() bool {
 }
 
 func (n *Node[K]) Value(key K) (*KeyVal[K], bool) {
-	v, ok := n.keys[key]
-	return v, ok
+	for _, i := range n.keys {
+		if i.Key == key {
+			return i, true
+		}
+	}
+	return nil, false
 }
 
 func (n *Node[K]) Refs() []*Ref[K] {
@@ -47,4 +63,12 @@ func (n *Node[K]) Keys() []*KeyVal[K] {
 	}
 
 	return keys
+}
+
+func (n *Node[K]) SetKeys(keys []*KeyVal[K]) {
+	n.keys = keys
+}
+
+func (n *Node[K]) SetRefs(refs []*Ref[K]) {
+	n.refs = refs
 }
