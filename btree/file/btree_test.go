@@ -16,7 +16,7 @@ func Test_Btree(t *testing.T) {
 	}{
 		"order 3": {
 			order: 3,
-			given: []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+			given: []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20},
 		},
 	}
 
@@ -41,12 +41,12 @@ func Test_Btree(t *testing.T) {
 
 			for _, a := range tc.given {
 				b.Add(context.Background(), a, []byte(strconv.Itoa(a)))
-				out, err := b.Print()
-				if err != nil {
-					t.Fatal(err)
-				}
-				t.Log("\n" + out)
 			}
+			out, err := b.Print()
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Log("\n" + out)
 		})
 	}
 }
