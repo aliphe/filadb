@@ -12,6 +12,14 @@ func newNodeID() NodeID {
 	return NodeID(uuid.New().String())
 }
 
+func NewNode[K Key](id NodeID, keys []*KeyVal[K], refs []*Ref[K]) *Node[K] {
+	return &Node[K]{
+		id:   id,
+		keys: keys,
+		refs: refs,
+	}
+}
+
 func leaf[K Key](keys []*KeyVal[K]) *Node[K] {
 	id := newNodeID()
 	return &Node[K]{

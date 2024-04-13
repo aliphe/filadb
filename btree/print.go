@@ -2,7 +2,6 @@ package btree
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 )
@@ -29,10 +28,13 @@ func (b *BTree[K]) printNode(n *Node[K], depth int) (string, error) {
 		refs = append(refs, printRef(r, depth))
 		s, ok, err := b.store.Find(context.Background(), r.N)
 		if !ok || err != nil {
-			return "", errors.New("unexpected error")
+			return "", fmt.Errorf("find node %v: %w", r.N, err)
 		}
 
 		out, err := b.printNode(s, depth+1)
+		if err != nil {
+			return "", err
+		}
 		refs = append(refs, out)
 	}
 
