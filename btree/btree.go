@@ -76,6 +76,39 @@ func (b *BTree[K]) Add(ctx context.Context, key K, val []byte) error {
 	return nil
 }
 
+func (b *BTree[K]) Get(ctx context.Context, key K) ([]byte, bool, error) {
+	if b.root == nil {
+		return nil, false, nil
+	}
+
+	kv, ok, err := b.get(ctx, b.root, key)
+	if err != nil {
+		return nil, false, err
+	}
+	if !ok {
+		return nil, false, nil
+	}
+	return kv.Val, true, nil
+}
+
+func (b *BTree[K]) get(ctx context.Context, n *Node[K], k K) (*KeyVal[K], bool, error) {
+	if n.Leaf() {
+		for _, kv := range n.Keys() {
+			if kv.Key == k {
+				return kv, true, nil
+			}
+		}
+		return nil, false, nil
+	}
+
+	sub, err := b.findInNode(ctx, n, k)
+	if err != nil {
+		return nil, false, err
+	}
+
+	return b.get(ctx, sub, k)
+}
+
 func (b *BTree[K]) findInNode(ctx context.Context, n *Node[K], k K) (*Node[K], error) {
 	var ref *Ref[K]
 	for _, r := range n.Refs() {

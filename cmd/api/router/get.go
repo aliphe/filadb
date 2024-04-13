@@ -43,6 +43,6 @@ func get(d *db.DB) http.HandlerFunc {
 		}
 
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, res)
+		fmt.Fprint(w, string(res))
 	}
 }

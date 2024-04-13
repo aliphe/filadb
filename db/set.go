@@ -8,19 +8,15 @@ import (
 
 const separator byte = '\n'
 
-func (d *DB) Set(ctx context.Context, table string, data any) error {
+func (d *DB) Set(ctx context.Context, table string, id string, data any) error {
 	enc, err := json.Marshal(data)
 	if err != nil {
 		return fmt.Errorf("marshal data: %w", err)
 	}
 
-	f, err := fileWriter(table)
+	err = d.s.Add(ctx, id, enc)
 	if err != nil {
-		return fmt.Errorf("access storage: %w", err)
-	}
-	_, err = f.Write(append(enc, separator))
-	if err != nil {
-		return fmt.Errorf("write data: %w", err)
+		return fmt.Errorf("save data: %w", err)
 	}
 
 	return nil
