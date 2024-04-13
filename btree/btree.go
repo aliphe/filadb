@@ -24,23 +24,15 @@ type Ref[K Key] struct {
 	N    NodeID
 }
 
-type Node[K Key] interface {
-	ID() NodeID
-	Leaf() bool
-	Value(key K) (*KeyVal[K], bool)
-	Refs() []*Ref[K]
-	Keys() []*KeyVal[K]
-}
-
 type nodeStore[K Key] interface {
-	Leaf(context.Context, []*KeyVal[K]) (Node[K], error)
-	NonLeaf(context.Context, []*Ref[K]) (Node[K], error)
-	Find(context.Context, NodeID) (Node[K], bool, error)
+	Leaf(context.Context, []*KeyVal[K]) (*Node[K], error)
+	NonLeaf(context.Context, []*Ref[K]) (*Node[K], error)
+	Find(context.Context, NodeID) (*Node[K], bool, error)
 }
 
 type BTree[K Key] struct {
 	order int
-	root  Node[K]
+	root  *Node[K]
 	store nodeStore[K]
 }
 
@@ -84,7 +76,7 @@ func (b *BTree[K]) Add(ctx context.Context, key K, val []byte) error {
 	return nil
 }
 
-func (b *BTree[K]) findNode(ctx context.Context, refs []*Ref[K], k K) (Node[K], error) {
+func (b *BTree[K]) findNode(ctx context.Context, refs []*Ref[K], k K) (*Node[K], error) {
 	var ref *Ref[K]
 	for _, r := range refs {
 		if r.To == nil || *r.To > k {
@@ -103,7 +95,7 @@ func (b *BTree[K]) findNode(ctx context.Context, refs []*Ref[K], k K) (Node[K], 
 	return node, nil
 }
 
-func (b *BTree[K]) insert(ctx context.Context, n Node[K], kv *KeyVal[K]) ([]*Ref[K], error) {
+func (b *BTree[K]) insert(ctx context.Context, n *Node[K], kv *KeyVal[K]) ([]*Ref[K], error) {
 	var keys []*KeyVal[K]
 	var refs []*Ref[K]
 
@@ -144,12 +136,12 @@ func (b *BTree[K]) insert(ctx context.Context, n Node[K], kv *KeyVal[K]) ([]*Ref
 			{
 				From: nil,
 				To:   &keys[mid].Key,
-				N:    left.ID(),
+				N:    left.id,
 			},
 			{
 				From: &keys[mid].Key,
 				To:   nil,
-				N:    right.ID(),
+				N:    right.id,
 			},
 		}, nil
 	}
@@ -169,12 +161,12 @@ func (b *BTree[K]) insert(ctx context.Context, n Node[K], kv *KeyVal[K]) ([]*Ref
 			{
 				From: nil,
 				To:   refs[mid].From,
-				N:    left.ID(),
+				N:    left.id,
 			},
 			{
 				From: refs[mid].To,
 				To:   nil,
-				N:    right.ID(),
+				N:    right.id,
 			},
 		}, nil
 	}

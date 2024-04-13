@@ -25,6 +25,7 @@ func Test_Btree(t *testing.T) {
 
 			for _, a := range tc.given {
 				b.Add(context.Background(), a, []byte(fmt.Sprint(a)))
+				// todo actually test it
 			}
 		})
 	}
