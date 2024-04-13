@@ -7,7 +7,14 @@ import (
 )
 
 func (b *BTree[K]) Print() (string, error) {
-	out, err := b.printNode(b.root, 0)
+	root, ok, err := b.root(context.Background())
+	if err != nil {
+		return "", fmt.Errorf("acquire root: %w", err)
+	}
+	if !ok {
+		return "", ErrTreeCorrupted
+	}
+	out, err := b.printNode(root, 0)
 	if err != nil {
 		return "", err
 	}

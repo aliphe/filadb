@@ -57,7 +57,7 @@ func Test_insertRefs(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			got := insertRefs[int](tc.given, tc.adding)
+			got := insertRefs(tc.given, tc.adding)
 
 			for i := range got {
 				if *got[i].From != *tc.want[i].From {

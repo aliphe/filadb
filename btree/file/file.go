@@ -3,6 +3,7 @@ package file
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -30,7 +31,7 @@ func New[K btree.Key](file *os.File) (*btreeStore[K], error) {
 
 func (b *btreeStore[K]) Save(ctx context.Context, n *btree.Node[K]) error {
 	path := filepath.Join(b.dir.Name(), string(n.ID()))
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0644)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0644)
 	if err != nil {
 		return fmt.Errorf("open node file: %w", err)
 	}
@@ -48,6 +49,9 @@ func (b *btreeStore[K]) Find(ctx context.Context, id btree.NodeID) (*btree.Node[
 	path := filepath.Join(b.dir.Name(), string(id))
 
 	c, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, false, nil
+	}
 	if err != nil {
 		return nil, false, fmt.Errorf("read node: %w", err)
 	}
