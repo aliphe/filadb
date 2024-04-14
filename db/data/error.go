@@ -1,4 +1,4 @@
-package db
+package data
 
 // Error represents a database specific error
 type Error string
