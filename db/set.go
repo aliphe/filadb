@@ -6,8 +6,6 @@ import (
 	"fmt"
 )
 
-const separator byte = '\n'
-
 func (d *DB) Set(ctx context.Context, table string, id string, data any) error {
 	enc, err := json.Marshal(data)
 	if err != nil {

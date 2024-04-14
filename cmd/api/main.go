@@ -32,7 +32,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	btree := btree.New[string](500, fileStore)
+	btree := btree.New(500, fileStore)
 
 	db := db.New(btree)
 	r := router.Init(db, router.WithVersion(*version))
