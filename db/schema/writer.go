@@ -36,7 +36,7 @@ func (w *Writer) Create(ctx context.Context, schema *Schema) error {
 		return fmt.Errorf("encode schema: %w", err)
 	}
 
-	err = w.store.Add(ctx, schema.Table, b)
+	err = w.store.Add(ctx, string(InternalTableSchemas), schema.Table, b)
 	if err != nil {
 		return fmt.Errorf("save schema: %w", err)
 	}

@@ -8,9 +8,9 @@ type ReaderWriter interface {
 }
 
 type Writer interface {
-	Add(ctx context.Context, key string, val []byte) error
+	Add(ctx context.Context, table string, key string, val []byte) error
 }
 
 type Reader interface {
-	Get(ctx context.Context, key string) ([]byte, bool, error)
+	Get(ctx context.Context, table string, key string) ([]byte, bool, error)
 }
