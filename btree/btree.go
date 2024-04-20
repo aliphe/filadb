@@ -121,7 +121,7 @@ func (b *BTree[K]) Get(ctx context.Context, node string, key K) ([]byte, bool, e
 		return nil, false, fmt.Errorf("acquire root: %w", err)
 	}
 	if !ok {
-		return nil, false, ErrTreeCorrupted
+		return nil, false, ErrNodeNotFound
 	}
 
 	kv, ok, err := b.get(ctx, root, key)

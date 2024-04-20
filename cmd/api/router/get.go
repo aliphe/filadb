@@ -1,15 +1,17 @@
 package router
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 
 	"github.com/aliphe/filadb/db"
+	tab "github.com/aliphe/filadb/db/table"
 )
 
-func get(d *db.DB) http.HandlerFunc {
+func get(d *db.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -29,7 +31,7 @@ func get(d *db.DB) http.HandlerFunc {
 
 		res, found, err := d.Get(r.Context(), table, id)
 		if err != nil {
-			if errors.Is(err, db.ErrTableNotFound) {
+			if errors.Is(err, tab.ErrTableNotFound) {
 				w.WriteHeader(http.StatusNotFound)
 				fmt.Fprintf(w, "table %s not found", table)
 			}
@@ -43,6 +45,11 @@ func get(d *db.DB) http.HandlerFunc {
 		}
 
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, string(res))
+		out, err := json.Marshal(res)
+		if err != nil {
+			slog.ErrorContext(ctx, fmt.Sprintf("unmarshal response: %v, %v", err, res))
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+		fmt.Fprint(w, string(out))
 	}
 }

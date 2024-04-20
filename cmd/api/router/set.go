@@ -17,7 +17,7 @@ type setQuery struct {
 	Row   any    `json:"row"`
 }
 
-func set(db *db.DB) http.HandlerFunc {
+func set(db *db.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -40,7 +40,7 @@ func set(db *db.DB) http.HandlerFunc {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 
-		err = db.Set(r.Context(), q.Table, q.Id, q.Row)
+		err = db.Insert(r.Context(), q.Table, q.Id, q.Row)
 		if err != nil {
 			slog.ErrorContext(ctx, fmt.Sprintf("db set: %v", err))
 			w.WriteHeader(http.StatusInternalServerError)

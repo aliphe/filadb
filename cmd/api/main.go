@@ -1,6 +1,9 @@
 package main
 
 import (
+	"bytes"
+	"context"
+	"encoding/gob"
 	"flag"
 	"log/slog"
 	"net/http"
@@ -10,11 +13,37 @@ import (
 	"github.com/aliphe/filadb/btree/file"
 	"github.com/aliphe/filadb/cmd/api/router"
 	"github.com/aliphe/filadb/db"
+	"github.com/aliphe/filadb/db/schema"
+	"github.com/aliphe/filadb/db/storage"
 )
 
 var (
 	version = flag.String("version", "0.0.1", "version of the service")
 )
+
+func seed(rw storage.ReaderWriter) {
+	sch := schema.Schema{
+		Table: "users",
+		Properties: []*schema.Property{
+			{
+				Name: "id",
+				Type: schema.PropertyTypeText,
+			},
+			{
+				Name: "name",
+				Type: schema.PropertyTypeText,
+			},
+			{
+				Name: "email",
+				Type: schema.PropertyTypeText,
+			},
+		},
+	}
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	_ = enc.Encode(sch)
+	rw.Add(context.Background(), string(schema.InternalTableSchemas), "users", buf.Bytes())
+}
 
 func main() {
 	flag.Parse()
@@ -33,8 +62,10 @@ func main() {
 		panic(err)
 	}
 	btree := btree.New(500, fileStore)
+	seed(btree)
+	schema := schema.NewReader(btree)
 
-	db := db.New(btree)
+	db := db.NewClient(btree, *schema)
 	r := router.Init(db, router.WithVersion(*version))
 
 	slog.Info("http server ready", slog.String("port", "3000"))

@@ -8,7 +8,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
-func Init(db *db.DB, opts ...Option) *chi.Mux {
+func Init(db *db.Client, opts ...Option) *chi.Mux {
 	o := &options{}
 	for _, opt := range opts {
 		opt(o)
