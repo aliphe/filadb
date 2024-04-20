@@ -7,8 +7,6 @@ import (
 	"slices"
 )
 
-const rootID = NodeID("root")
-
 type Key interface {
 	cmp.Ordered
 }
@@ -32,20 +30,23 @@ type nodeStore[K Key] interface {
 }
 
 type BTree[K Key] struct {
-	order int
-	store nodeStore[K]
+	order  int
+	store  nodeStore[K]
+	rootID NodeID
 }
 
 func New[K Key](order int, store nodeStore[K]) *BTree[K] {
-	return &BTree[K]{
+	btree := BTree[K]{
 		order: order,
 		store: store,
 	}
+
+	return &btree
 }
 
-func (b *BTree[K]) createRoot(ctx context.Context, key K, val []byte) error {
+func (b *BTree[K]) createRoot(ctx context.Context, nodeID NodeID, key K, val []byte) error {
 	root := &Node[K]{
-		id: "root",
+		id: nodeID,
 		keys: []*KeyVal[K]{
 			{
 				Key: key,
@@ -62,8 +63,8 @@ func (b *BTree[K]) createRoot(ctx context.Context, key K, val []byte) error {
 	return nil
 }
 
-func (b *BTree[K]) root(ctx context.Context) (*Node[K], bool, error) {
-	root, ok, err := b.store.Find(ctx, rootID)
+func (b *BTree[K]) root(ctx context.Context, nodeID NodeID) (*Node[K], bool, error) {
+	root, ok, err := b.store.Find(ctx, nodeID)
 	if err != nil {
 		return nil, false, fmt.Errorf("acquire btree root: %w", err)
 	}
@@ -74,13 +75,14 @@ func (b *BTree[K]) root(ctx context.Context) (*Node[K], bool, error) {
 }
 
 func (b *BTree[K]) updateRoot(ctx context.Context, curr *Node[K], refs []*Ref[K]) error {
+	rootID := curr.ID()
 	curr.id = newNodeID()
 	if err := b.store.Save(ctx, curr); err != nil {
 		return fmt.Errorf("unmap old root: %w", err)
 	}
 
 	root := &Node[K]{
-		id:   "root",
+		id:   rootID,
 		keys: nil,
 		refs: refs,
 	}
@@ -88,14 +90,14 @@ func (b *BTree[K]) updateRoot(ctx context.Context, curr *Node[K], refs []*Ref[K]
 	return b.store.Save(ctx, root)
 }
 
-func (b *BTree[K]) Add(ctx context.Context, key K, val []byte) error {
-	root, ok, err := b.root(ctx)
+func (b *BTree[K]) Add(ctx context.Context, node string, key K, val []byte) error {
+	root, ok, err := b.root(ctx, NodeID(node))
 	if err != nil {
 		return fmt.Errorf("acquire root: %w", err)
 	}
 
 	if !ok {
-		return b.createRoot(ctx, key, val)
+		return b.createRoot(ctx, NodeID(node), key, val)
 	}
 
 	newRoot, err := b.insert(ctx, root, &KeyVal[K]{
@@ -113,8 +115,8 @@ func (b *BTree[K]) Add(ctx context.Context, key K, val []byte) error {
 	return nil
 }
 
-func (b *BTree[K]) Get(ctx context.Context, key K) ([]byte, bool, error) {
-	root, ok, err := b.root(ctx)
+func (b *BTree[K]) Get(ctx context.Context, node string, key K) ([]byte, bool, error) {
+	root, ok, err := b.root(ctx, NodeID(node))
 	if err != nil {
 		return nil, false, fmt.Errorf("acquire root: %w", err)
 	}

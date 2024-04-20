@@ -11,11 +11,11 @@ import (
 	"github.com/aliphe/filadb/btree"
 )
 
-type btreeStore[K btree.Key] struct {
+type BtreeStore[K btree.Key] struct {
 	dir *os.File
 }
 
-func New[K btree.Key](file *os.File) (*btreeStore[K], error) {
+func New[K btree.Key](file *os.File) (*BtreeStore[K], error) {
 	s, err := file.Stat()
 	if err != nil {
 		return nil, fmt.Errorf("retrieve file info: %w", err)
@@ -24,12 +24,12 @@ func New[K btree.Key](file *os.File) (*btreeStore[K], error) {
 		return nil, fmt.Errorf("file %s: %w", file.Name(), ErrExpectedDirectory)
 	}
 
-	return &btreeStore[K]{
+	return &BtreeStore[K]{
 		dir: file,
 	}, nil
 }
 
-func (b *btreeStore[K]) Save(ctx context.Context, n *btree.Node[K]) error {
+func (b *BtreeStore[K]) Save(ctx context.Context, n *btree.Node[K]) error {
 	path := filepath.Join(b.dir.Name(), string(n.ID()))
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0644)
 	if err != nil {
@@ -45,7 +45,7 @@ func (b *btreeStore[K]) Save(ctx context.Context, n *btree.Node[K]) error {
 	return nil
 }
 
-func (b *btreeStore[K]) Find(ctx context.Context, id btree.NodeID) (*btree.Node[K], bool, error) {
+func (b *BtreeStore[K]) Find(ctx context.Context, id btree.NodeID) (*btree.Node[K], bool, error) {
 	path := filepath.Join(b.dir.Name(), string(id))
 
 	c, err := os.ReadFile(path)

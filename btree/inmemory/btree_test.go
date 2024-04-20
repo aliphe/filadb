@@ -24,9 +24,9 @@ func Test_Btree(t *testing.T) {
 			b := btree.New(tc.order, New[int]())
 
 			for _, a := range tc.given {
-				b.Add(context.Background(), a, []byte(strconv.Itoa(a)))
+				b.Add(context.Background(), "root", a, []byte(strconv.Itoa(a)))
 			}
-			out, err := b.Print()
+			out, err := b.Print("root")
 			if err != nil {
 				t.Fatal(err)
 			}

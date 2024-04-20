@@ -6,8 +6,8 @@ import (
 	"strings"
 )
 
-func (b *BTree[K]) Print() (string, error) {
-	root, ok, err := b.root(context.Background())
+func (b *BTree[K]) Print(node string) (string, error) {
+	root, ok, err := b.root(context.Background(), NodeID(node))
 	if err != nil {
 		return "", fmt.Errorf("acquire root: %w", err)
 	}
