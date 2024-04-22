@@ -5,40 +5,40 @@ import (
 	"strings"
 )
 
-type TokenType string
+type Kind string
 
 const (
-	TokenTypeIllegal    TokenType = "ILLEGAL"
-	TokenTypeWhitespace TokenType = "WHITESPACE"
+	KindIllegal    Kind = "ILLEGAL"
+	KindWhitespace Kind = "WHITESPACE"
 
 	// SQL keywords
-	TokenTypeSelect TokenType = "SELECT"
-	TokenTypeInsert TokenType = "INSERT"
-	TokenTypeFrom   TokenType = "FROM"
-	TokenTypeWhere  TokenType = "WHERE"
+	KindSelect Kind = "SELECT"
+	KindInsert Kind = "INSERT"
+	KindFrom   Kind = "FROM"
+	KindWhere  Kind = "WHERE"
 
 	// users, id, etc.
-	TokenTypeLiteral TokenType = "LITERAL"
+	KindLiteral Kind = "LITERAL"
 
-	TokenTypeNewLine     TokenType = "\n"
-	TokenTypeComma       TokenType = ","
-	TokenTypeSemiColumn  TokenType = ";"
-	TokenTypeQuote       TokenType = "'"
-	TokenTypeDoubleQuote TokenType = "\""
+	KindNewLine     Kind = "\n"
+	KindComma       Kind = ","
+	KindSemiColumn  Kind = ";"
+	KindQuote       Kind = "'"
+	KindDoubleQuote Kind = "\""
 
-	TokenTypeEqual TokenType = "="
-	TokenTypeAbove TokenType = ">"
-	TokenTypeBelow TokenType = "<"
+	KindEqual Kind = "="
+	KindAbove Kind = ">"
+	KindBelow Kind = "<"
 )
 
 type Token struct {
-	Type  TokenType
+	Kind  Kind
 	Value string
 }
 
-func NewToken(t TokenType, val string) *Token {
+func NewToken(t Kind, val string) *Token {
 	return &Token{
-		Type:  t,
+		Kind:  t,
 		Value: val,
 	}
 }
@@ -52,17 +52,17 @@ var matchers = []Matcher{
 		var whitespaces = []rune{' ', '\t'}
 
 		if slices.Contains(whitespaces, rune(s[0])) {
-			return true, NewToken(TokenTypeWhitespace, s[0:1])
+			return true, NewToken(KindWhitespace, s[0:1])
 		}
 		return false, nil
 	},
 	// String matchers
 	func(s string) (bool, *Token) {
-		for _, tok := range []TokenType{
-			TokenTypeSelect, TokenTypeInsert, TokenTypeFrom,
-			TokenTypeWhere, TokenTypeNewLine, TokenTypeComma,
-			TokenTypeSemiColumn, TokenTypeQuote, TokenTypeDoubleQuote,
-			TokenTypeEqual, TokenTypeAbove, TokenTypeBelow,
+		for _, tok := range []Kind{
+			KindSelect, KindInsert, KindFrom,
+			KindWhere, KindNewLine, KindComma,
+			KindSemiColumn, KindQuote, KindDoubleQuote,
+			KindEqual, KindAbove, KindBelow,
 		} {
 			_, ok := strings.CutPrefix(strings.ToLower(s), strings.ToLower(string(tok)))
 			if ok {
@@ -82,7 +82,7 @@ var matchers = []Matcher{
 			}
 		}
 		if match != "" {
-			return true, NewToken(TokenTypeLiteral, match)
+			return true, NewToken(KindLiteral, match)
 		}
 		return false, nil
 	},
@@ -90,6 +90,6 @@ var matchers = []Matcher{
 	// Illegal
 	// Note: this one needs to be last, at it will always match and matchers are computed in order
 	func(s string) (bool, *Token) {
-		return true, NewToken(TokenTypeIllegal, s[0:1])
+		return true, NewToken(KindIllegal, s[0:1])
 	},
 }

@@ -15,35 +15,35 @@ func Test_NextToken(t *testing.T) {
 			given: "SELECT *\tfrom users;",
 			want: []*Token{
 				{
-					Type:  TokenTypeSelect,
+					Kind:  KindSelect,
 					Value: "SELECT",
 				},
 				{
-					Type:  TokenTypeWhitespace,
+					Kind:  KindWhitespace,
 					Value: " ",
 				},
 				{
-					Type:  TokenTypeLiteral,
+					Kind:  KindLiteral,
 					Value: "*",
 				},
 				{
-					Type:  TokenTypeWhitespace,
+					Kind:  KindWhitespace,
 					Value: "\t",
 				},
 				{
-					Type:  TokenTypeFrom,
+					Kind:  KindFrom,
 					Value: "from",
 				},
 				{
-					Type:  TokenTypeWhitespace,
+					Kind:  KindWhitespace,
 					Value: " ",
 				},
 				{
-					Type:  TokenTypeLiteral,
+					Kind:  KindLiteral,
 					Value: "users",
 				},
 				{
-					Type:  TokenTypeSemiColumn,
+					Kind:  KindSemiColumn,
 					Value: ";",
 				},
 			},

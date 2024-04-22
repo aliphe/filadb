@@ -9,5 +9,6 @@ require (
 
 require (
 	github.com/golang/snappy v0.0.1 // indirect
+	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/linkedin/goavro/v2 v2.12.0 // indirect
 )
