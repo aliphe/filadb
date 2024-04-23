@@ -1,47 +1,66 @@
 package parser
 
 import (
+	"log"
 	"testing"
 
 	"github.com/aliphe/filadb/sql/lexer"
 )
 
-func Test_Parse(t *testing.T) {
+func Test_ParseExpr(t *testing.T) {
 	tests := map[string]struct {
-		given []lexer.Token
+		given []*lexer.Token
 		want  Expr
+		valid bool
 	}{
-		"SELECT * FROM users": {
-			given: []lexer.Token{
-				*lexer.NewToken(lexer.KindSelect, ""),
-				*lexer.NewToken(lexer.KindLiteral, ""),
-				*lexer.NewToken(lexer.KindFrom, ""),
-				*lexer.NewToken(lexer.KindLiteral, ""),
+		"SELECT * FROM users;": {
+			given: []*lexer.Token{
+				{
+					Kind: lexer.KindSelect,
+				},
+				{
+					Kind: lexer.KindLiteral,
+				},
+				{
+					Kind: lexer.KindFrom,
+				},
+				{
+					Kind: lexer.KindLiteral,
+				},
+				{
+					Kind: lexer.KindSemiColumn,
+				},
 			},
 			want: Expr{
+				tokens: []*lexer.Token{{Kind: lexer.KindSemiColumn}},
 				Select: Select{
-					Fields: []Field{
+					tokens: []*lexer.Token{
 						{
-							Source: "users",
-							Col:    "*",
+							Kind: lexer.KindSelect,
 						},
-					},
-					Sources: []Source{
 						{
-							Name: "users",
-							Filter: func(i interface{}) bool {
-								return true
-							},
+							Kind: lexer.KindLiteral,
+						},
+						{
+							Kind: lexer.KindFrom,
+						},
+						{
+							Kind: lexer.KindLiteral,
 						},
 					},
 				},
 			},
+			valid: true,
 		},
 	}
 
-	for name, _ := range tests {
+	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			t.Skip()
+			got, ok := ParseExpr(tc.given)
+			if ok != tc.valid {
+				t.Fatalf("ParseExpr() mismatch, want isValid %v, got %v", tc.valid, ok)
+			}
+			log.Printf("%+v", got)
 		})
 	}
 }
