@@ -25,6 +25,7 @@ const (
 	KindSemiColumn  Kind = ";"
 	KindQuote       Kind = "'"
 	KindDoubleQuote Kind = "\""
+	KindEOF         Kind = ""
 
 	KindEqual Kind = "="
 	KindAbove Kind = ">"
@@ -32,8 +33,9 @@ const (
 )
 
 type Token struct {
-	Kind  Kind
-	Value string
+	Kind     Kind
+	Value    string
+	Position int
 }
 
 func NewToken(t Kind, val string) *Token {

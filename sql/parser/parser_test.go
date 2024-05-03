@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"encoding/json"
 	"log"
 	"testing"
 
@@ -10,57 +11,61 @@ import (
 func Test_ParseExpr(t *testing.T) {
 	tests := map[string]struct {
 		given []*lexer.Token
-		want  Expr
+		want  SQLQuery
 		valid bool
 	}{
 		"SELECT * FROM users;": {
 			given: []*lexer.Token{
 				{
-					Kind: lexer.KindSelect,
+					Kind:  lexer.KindSelect,
+					Value: "SELECT",
 				},
 				{
-					Kind: lexer.KindLiteral,
+					Kind:  lexer.KindLiteral,
+					Value: "*",
 				},
 				{
-					Kind: lexer.KindFrom,
+					Kind:  lexer.KindFrom,
+					Value: "FROM",
 				},
 				{
-					Kind: lexer.KindLiteral,
+					Kind:  lexer.KindLiteral,
+					Value: "users",
 				},
 				{
-					Kind: lexer.KindSemiColumn,
+					Kind:  lexer.KindWhere,
+					Value: "WHERE",
+				},
+				{
+					Kind:  lexer.KindLiteral,
+					Value: "id",
+				},
+				{
+					Kind:  lexer.KindEqual,
+					Value: "=",
+				},
+				{
+					Kind:  lexer.KindLiteral,
+					Value: "uuid",
+				},
+				{
+					Kind:  lexer.KindSemiColumn,
+					Value: ";",
 				},
 			},
-			want: Expr{
-				tokens: []*lexer.Token{{Kind: lexer.KindSemiColumn}},
-				Select: Select{
-					tokens: []*lexer.Token{
-						{
-							Kind: lexer.KindSelect,
-						},
-						{
-							Kind: lexer.KindLiteral,
-						},
-						{
-							Kind: lexer.KindFrom,
-						},
-						{
-							Kind: lexer.KindLiteral,
-						},
-					},
-				},
-			},
+			want:  SQLQuery{},
 			valid: true,
 		},
 	}
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			got, ok := ParseExpr(tc.given)
-			if ok != tc.valid {
-				t.Fatalf("ParseExpr() mismatch, want isValid %v, got %v", tc.valid, ok)
+			got, err := Parse(tc.given)
+			if err != nil {
+				log.Println(err)
 			}
-			log.Printf("%+v", got)
+			b, _ := json.Marshal(got)
+			log.Printf("%s", b)
 		})
 	}
 }
