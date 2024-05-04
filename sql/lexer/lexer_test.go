@@ -15,36 +15,44 @@ func Test_NextToken(t *testing.T) {
 			given: "SELECT *\tfrom users;",
 			want: []*Token{
 				{
-					Kind:  KindSelect,
-					Value: "SELECT",
+					Kind:     KindSelect,
+					Value:    "SELECT",
+					Position: 0,
 				},
 				{
-					Kind:  KindWhitespace,
-					Value: " ",
+					Kind:     KindWhitespace,
+					Value:    " ",
+					Position: 6,
 				},
 				{
-					Kind:  KindLiteral,
-					Value: "*",
+					Kind:     KindLiteral,
+					Value:    "*",
+					Position: 7,
 				},
 				{
-					Kind:  KindWhitespace,
-					Value: "\t",
+					Kind:     KindWhitespace,
+					Value:    "\t",
+					Position: 8,
 				},
 				{
-					Kind:  KindFrom,
-					Value: "from",
+					Kind:     KindFrom,
+					Value:    "from",
+					Position: 9,
 				},
 				{
-					Kind:  KindWhitespace,
-					Value: " ",
+					Kind:     KindWhitespace,
+					Value:    " ",
+					Position: 13,
 				},
 				{
-					Kind:  KindLiteral,
-					Value: "users",
+					Kind:     KindLiteral,
+					Value:    "users",
+					Position: 14,
 				},
 				{
-					Kind:  KindSemiColumn,
-					Value: ";",
+					Kind:     KindSemiColumn,
+					Value:    ";",
+					Position: 19,
 				},
 			},
 		},
@@ -52,7 +60,7 @@ func Test_NextToken(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.given, func(t *testing.T) {
-			got := Tokenize(tc.given)
+			got, _ := Tokenize(tc.given)
 			if diff := cmp.Diff(tc.want, got); diff != "" {
 				t.Fatalf("Tokenize() mismatch (-want +got):\n%s", diff)
 			}

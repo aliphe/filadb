@@ -10,59 +10,25 @@ import (
 
 func Test_ParseExpr(t *testing.T) {
 	tests := map[string]struct {
-		given []*lexer.Token
 		want  SQLQuery
 		valid bool
 	}{
-		"SELECT * FROM users;": {
-			given: []*lexer.Token{
-				{
-					Kind:  lexer.KindSelect,
-					Value: "SELECT",
-				},
-				{
-					Kind:  lexer.KindLiteral,
-					Value: "*",
-				},
-				{
-					Kind:  lexer.KindFrom,
-					Value: "FROM",
-				},
-				{
-					Kind:  lexer.KindLiteral,
-					Value: "users",
-				},
-				{
-					Kind:  lexer.KindWhere,
-					Value: "WHERE",
-				},
-				{
-					Kind:  lexer.KindLiteral,
-					Value: "id",
-				},
-				{
-					Kind:  lexer.KindEqual,
-					Value: "=",
-				},
-				{
-					Kind:  lexer.KindLiteral,
-					Value: "uuid",
-				},
-				{
-					Kind:  lexer.KindSemiColumn,
-					Value: ";",
-				},
-			},
+		"SELECT * FROM users WHERE id = 1;": {
 			want:  SQLQuery{},
 			valid: true,
 		},
 	}
 
-	for name, tc := range tests {
-		t.Run(name, func(t *testing.T) {
-			got, err := Parse(tc.given)
+	for expr := range tests {
+		t.Run(expr, func(t *testing.T) {
+			tokens, err := lexer.Tokenize(expr)
 			if err != nil {
-				log.Println(err)
+				t.Fatal(err)
+			}
+
+			got, err := Parse(tokens)
+			if err != nil {
+				t.Fatal(err)
 			}
 			b, _ := json.Marshal(got)
 			log.Printf("%s", b)

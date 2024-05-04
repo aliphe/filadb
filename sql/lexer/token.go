@@ -77,7 +77,10 @@ var matchers = []Matcher{
 	func(s string) (bool, *Token) {
 		var match string
 		for _, c := range s {
-			if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || c == '*' {
+			if (c >= 'a' && c <= 'z') ||
+				(c >= 'A' && c <= 'Z') ||
+				(c >= '0' && c <= '9') ||
+				c == '_' || c == '*' {
 				match += string(c)
 			} else {
 				break

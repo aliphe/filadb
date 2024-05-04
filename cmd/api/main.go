@@ -63,9 +63,8 @@ func main() {
 	}
 	btree := btree.New(500, fileStore)
 	seed(btree)
-	schema := schema.NewReader(btree)
 
-	db := db.NewClient(btree, *schema)
+	db := db.NewClient(btree)
 	r := router.Init(db, router.WithVersion(*version))
 
 	slog.Info("http server ready", slog.String("port", "3000"))

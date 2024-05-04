@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 
 	"github.com/aliphe/filadb/sql/lexer"
 )
@@ -61,7 +62,7 @@ func Parse(tokens []*lexer.Token) (SQLQuery, error) {
 	if err != nil {
 		return SQLQuery{}, err
 	}
-	if cur.cursor < len(tokens)-1 {
+	if cur.cursor < len(expr.tokens)-1 {
 		return SQLQuery{}, UnexpectedTokenError{tokens[cur.cursor]}
 	}
 
@@ -97,6 +98,7 @@ func parseSelect(in *expr) (Select, *expr, error) {
 	} else if err == nil {
 		expr = selExpr
 	}
+	log.Println("bah")
 
 	return Select{
 		Fields: fields,
@@ -148,15 +150,18 @@ func parseFrom(in *expr) (From, *expr, error) {
 }
 
 func parseWhere(in *expr) (*Where, *expr, error) {
+	log.Println("parseWhere")
 	_, expr, err := in.ExpectRead(1, lexer.KindWhere)
 	if err != nil {
 		return nil, nil, err
 	}
+	log.Println("read where")
 
 	filter, expr, err := parseFilter(expr)
 	if err != nil {
 		return nil, nil, err
 	}
+	log.Println("read filter")
 
 	return &Where{
 		Filter: filter,

@@ -1,8 +1,6 @@
 package parser
 
 import (
-	"log/slog"
-
 	"github.com/aliphe/filadb/sql/lexer"
 )
 
@@ -13,9 +11,19 @@ type expr struct {
 
 func newExpr(tokens []*lexer.Token) *expr {
 	return &expr{
-		tokens: tokens,
+		tokens: clearWhitespaces(tokens),
 		cursor: 0,
 	}
+}
+
+func clearWhitespaces(tokens []*lexer.Token) []*lexer.Token {
+	toks := make([]*lexer.Token, 0, len(tokens)/2)
+	for _, t := range tokens {
+		if t.Kind != lexer.KindWhitespace {
+			toks = append(toks, t)
+		}
+	}
+	return toks
 }
 
 func (e *expr) Read(n int) ([]*lexer.Token, *expr, error) {
@@ -29,11 +37,6 @@ func (e *expr) Read(n int) ([]*lexer.Token, *expr, error) {
 }
 
 func (e *expr) ExpectRead(n int, kinds ...lexer.Kind) ([]*lexer.Token, *expr, error) {
-	slog.Info("reading tokens",
-		slog.Int("n", n),
-		slog.Any("kinds", kinds),
-		slog.Int("cur", e.cursor),
-	)
 	toks, expr, err := e.Read(n)
 	if err != nil {
 		return nil, nil, err

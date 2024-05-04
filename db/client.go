@@ -10,14 +10,14 @@ import (
 )
 
 type Client struct {
-	schema schema.Reader
+	schema *schema.Reader
 	store  storage.ReaderWriter
 }
 
-func NewClient(store storage.ReaderWriter, schema schema.Reader) *Client {
+func NewClient(store storage.ReaderWriter) *Client {
 	return &Client{
 		store:  store,
-		schema: schema,
+		schema: schema.NewReader(store),
 	}
 }
 
