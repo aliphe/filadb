@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 
 	"github.com/aliphe/filadb/sql/lexer"
 )
@@ -28,7 +27,6 @@ type SQLQuery struct {
 type Select struct {
 	Fields []Field
 	From
-	Where *Where
 }
 
 type Field struct {
@@ -37,6 +35,7 @@ type Field struct {
 
 type From struct {
 	Table string
+	Where *Where
 }
 
 type Where struct {
@@ -91,19 +90,9 @@ func parseSelect(in *expr) (Select, *expr, error) {
 		return Select{}, in, fmt.Errorf("parse from: %w", err)
 	}
 
-	where, selExpr, err := parseWhere(expr)
-	// where is optional
-	if err != nil && !errors.Is(err, ErrUnexpectedEndOfInput) {
-		return Select{}, in, fmt.Errorf("parse where: %w", err)
-	} else if err == nil {
-		expr = selExpr
-	}
-	log.Println("bah")
-
 	return Select{
 		Fields: fields,
 		From:   from,
-		Where:  where,
 	}, expr, nil
 }
 
@@ -144,24 +133,30 @@ func parseFrom(in *expr) (From, *expr, error) {
 		return From{}, nil, err
 	}
 
+	where, selExpr, err := parseWhere(expr)
+	// where is optional
+	if err != nil && !errors.Is(err, ErrUnexpectedEndOfInput) {
+		return From{}, in, fmt.Errorf("parse where: %w", err)
+	} else if err == nil {
+		expr = selExpr
+	}
+
 	return From{
 		Table: cur[0].Value,
+		Where: where,
 	}, expr, nil
 }
 
 func parseWhere(in *expr) (*Where, *expr, error) {
-	log.Println("parseWhere")
 	_, expr, err := in.ExpectRead(1, lexer.KindWhere)
 	if err != nil {
 		return nil, nil, err
 	}
-	log.Println("read where")
 
 	filter, expr, err := parseFilter(expr)
 	if err != nil {
 		return nil, nil, err
 	}
-	log.Println("read filter")
 
 	return &Where{
 		Filter: filter,
