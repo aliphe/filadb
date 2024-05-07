@@ -1,6 +1,8 @@
 package storage
 
-import "context"
+import (
+	"context"
+)
 
 type ReaderWriter interface {
 	Reader
@@ -12,5 +14,6 @@ type Writer interface {
 }
 
 type Reader interface {
-	Get(ctx context.Context, node, key string) ([]byte, bool, error)
+	Get(ctx context.Context, table, key string) ([]byte, bool, error)
+	Scan(ctx context.Context, table string) ([][]byte, error)
 }

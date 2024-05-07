@@ -7,7 +7,7 @@ import (
 	"github.com/linkedin/goavro/v2"
 )
 
-func Marshal(schema string, obj interface{}) ([]byte, error) {
+func Marshal(schema string, obj map[string]interface{}) ([]byte, error) {
 	c, err := goavro.NewCodec(schema)
 	if err != nil {
 		return nil, fmt.Errorf("invalid schema: %w", err)
@@ -21,7 +21,7 @@ func Marshal(schema string, obj interface{}) ([]byte, error) {
 	return b, nil
 }
 
-func Unmarshal(schema string, b []byte) (interface{}, error) {
+func Unmarshal(schema string, b []byte) (map[string]interface{}, error) {
 	c, err := goavro.NewCodec(schema)
 	if err != nil {
 		return nil, fmt.Errorf("invalid schema: %w", err)
@@ -32,5 +32,5 @@ func Unmarshal(schema string, b []byte) (interface{}, error) {
 		return nil, fmt.Errorf("decode: %w", err)
 	}
 
-	return out, nil
+	return out.(map[string]interface{}), nil
 }

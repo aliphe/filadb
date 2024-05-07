@@ -12,9 +12,9 @@ import (
 )
 
 type setQuery struct {
-	Table string `json:"table"`
-	Id    string `json:"id"`
-	Row   any    `json:"row"`
+	Table string                 `json:"table"`
+	Id    string                 `json:"id"`
+	Row   map[string]interface{} `json:"row"`
 }
 
 func set(db *db.Client) http.HandlerFunc {

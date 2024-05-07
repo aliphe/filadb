@@ -26,7 +26,7 @@ func clearWhitespaces(tokens []*lexer.Token) []*lexer.Token {
 	return toks
 }
 
-func (e *expr) Read(n int) ([]*lexer.Token, *expr, error) {
+func (e *expr) read(n int) ([]*lexer.Token, *expr, error) {
 	if n > len(e.tokens) {
 		return nil, nil, ErrUnexpectedEndOfInput
 	}
@@ -36,8 +36,8 @@ func (e *expr) Read(n int) ([]*lexer.Token, *expr, error) {
 	}, nil
 }
 
-func (e *expr) ExpectRead(n int, kinds ...lexer.Kind) ([]*lexer.Token, *expr, error) {
-	toks, expr, err := e.Read(n)
+func (e *expr) expectRead(n int, kinds ...lexer.Kind) ([]*lexer.Token, *expr, error) {
+	toks, expr, err := e.read(n)
 	if err != nil {
 		return nil, nil, err
 	}

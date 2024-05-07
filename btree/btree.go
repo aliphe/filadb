@@ -134,6 +134,48 @@ func (b *BTree[K]) Get(ctx context.Context, node string, key K) ([]byte, bool, e
 	return kv.Val, true, nil
 }
 
+func (b *BTree[K]) Scan(ctx context.Context, node string) ([][]byte, error) {
+	root, ok, err := b.root(ctx, NodeID(node))
+	if err != nil {
+		return nil, fmt.Errorf("acquire root: %w", err)
+	}
+	if !ok {
+		return nil, ErrNodeNotFound
+	}
+
+	return b.dump(ctx, root)
+}
+
+func (b *BTree[K]) dump(ctx context.Context, n *Node[K]) ([][]byte, error) {
+	if !n.Leaf() {
+		out := make([][][]byte, 0, b.order)
+		// TODO parallel (needs benchmark)
+		for _, r := range n.Refs() {
+			c, ok, err := b.store.Find(ctx, r.N)
+			if err != nil {
+				return nil, err
+			}
+			if !ok {
+				return nil, ErrNodeNotFound
+			}
+
+			b, err := b.dump(ctx, c)
+			if err != nil {
+				return nil, err
+			}
+
+			out = append(out, b)
+		}
+		return slices.Concat(out...), nil
+	}
+
+	out := make([][]byte, 0, b.order)
+	for _, kv := range n.keys {
+		out = append(out, kv.Val)
+	}
+	return out, nil
+}
+
 func (b *BTree[K]) get(ctx context.Context, n *Node[K], k K) (*KeyVal[K], bool, error) {
 	if n.Leaf() {
 		for _, kv := range n.Keys() {

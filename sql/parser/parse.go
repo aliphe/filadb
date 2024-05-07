@@ -21,12 +21,12 @@ func (u UnexpectedTokenError) Error() string {
 }
 
 type SQLQuery struct {
-	Select
+	Select Select
 }
 
 type Select struct {
 	Fields []Field
-	From
+	From   From
 }
 
 type Field struct {
@@ -72,7 +72,7 @@ func Parse(tokens []*lexer.Token) (SQLQuery, error) {
 }
 
 func parseSelect(in *expr) (Select, *expr, error) {
-	cur, expr, err := in.Read(1)
+	cur, expr, err := in.read(1)
 	if errors.Is(err, io.EOF) {
 		return Select{}, in, ErrUnexpectedEndOfInput
 	}
@@ -97,7 +97,7 @@ func parseSelect(in *expr) (Select, *expr, error) {
 }
 
 func parseFields(in *expr) ([]Field, *expr, error) {
-	cur, expr, err := in.ExpectRead(1, lexer.KindLiteral)
+	cur, expr, err := in.expectRead(1, lexer.KindLiteral)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -109,7 +109,7 @@ func parseFields(in *expr) ([]Field, *expr, error) {
 	}
 
 	for {
-		cur, exp, err := expr.Read(2)
+		cur, exp, err := expr.read(2)
 		if errors.Is(err, io.EOF) ||
 			cur[0].Kind != lexer.KindComma || cur[1].Kind != lexer.KindLiteral {
 			break
@@ -123,12 +123,12 @@ func parseFields(in *expr) ([]Field, *expr, error) {
 }
 
 func parseFrom(in *expr) (From, *expr, error) {
-	_, expr, err := in.ExpectRead(1, lexer.KindFrom)
+	_, expr, err := in.expectRead(1, lexer.KindFrom)
 	if err != nil {
 		return From{}, nil, err
 	}
 
-	cur, expr, err := expr.ExpectRead(1, lexer.KindLiteral)
+	cur, expr, err := expr.expectRead(1, lexer.KindLiteral)
 	if err != nil {
 		return From{}, nil, err
 	}
@@ -148,7 +148,7 @@ func parseFrom(in *expr) (From, *expr, error) {
 }
 
 func parseWhere(in *expr) (*Where, *expr, error) {
-	_, expr, err := in.ExpectRead(1, lexer.KindWhere)
+	_, expr, err := in.expectRead(1, lexer.KindWhere)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -164,7 +164,7 @@ func parseWhere(in *expr) (*Where, *expr, error) {
 }
 
 func parseFilter(in *expr) (Filter, *expr, error) {
-	cur, expr, err := in.Read(3)
+	cur, expr, err := in.read(3)
 	if err != nil {
 		return Filter{}, nil, err
 	}
