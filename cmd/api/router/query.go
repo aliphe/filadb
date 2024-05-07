@@ -16,6 +16,7 @@ func query(db *db.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
+		w.Header().Add("content-type", "text/csv")
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
@@ -50,5 +51,6 @@ func query(db *db.Client) http.HandlerFunc {
 			slog.ErrorContext(ctx, fmt.Sprintf("marshall result: %s", err))
 			w.WriteHeader(http.StatusInternalServerError)
 		}
+
 	}
 }
