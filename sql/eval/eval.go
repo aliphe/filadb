@@ -42,10 +42,11 @@ func (e *Evaluator) evalSelect(ctx context.Context, sel parser.Select) ([]object
 
 	out := make([]object.Row, 0, len(from))
 	for _, row := range from {
-		var ins object.Row
+		ins := make(object.Row)
 		for _, f := range sel.Fields {
 			ins[f.Column] = row[f.Column]
 		}
+		out = append(out, ins)
 	}
 	return out, nil
 }

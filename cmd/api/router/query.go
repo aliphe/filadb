@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/aliphe/filadb/db"
+	"github.com/aliphe/filadb/db/csv"
 	"github.com/aliphe/filadb/sql"
 )
 
@@ -32,13 +33,18 @@ func query(db *db.Client) http.HandlerFunc {
 
 		sql := sql.NewRunner(db)
 
-		out, err := sql.Run(ctx, query)
+		res, err := sql.Run(ctx, query)
 		if err != nil {
 			slog.ErrorContext(ctx, fmt.Sprintf("run sql query: %s", err))
 			w.WriteHeader(http.StatusInternalServerError)
 		}
-		fmt.Fprint(w, out)
 
+		csv := csv.NewWriter(w)
+		err = csv.Write(res)
+		if err != nil {
+			slog.ErrorContext(ctx, fmt.Sprintf("marshall result: %s", err))
+			w.WriteHeader(http.StatusInternalServerError)
+		}
 		w.WriteHeader(http.StatusOK)
 	}
 }

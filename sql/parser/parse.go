@@ -73,8 +73,8 @@ func Parse(tokens []*lexer.Token) (SQLQuery, error) {
 
 func parseSelect(in *expr) (Select, *expr, error) {
 	cur, expr, err := in.read(1)
-	if errors.Is(err, io.EOF) {
-		return Select{}, in, ErrUnexpectedEndOfInput
+	if err != nil {
+		return Select{}, in, err
 	}
 	if cur[0].Kind != lexer.KindSelect {
 		return Select{}, in, UnexpectedTokenError{cur[0]}
