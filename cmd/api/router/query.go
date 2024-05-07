@@ -39,12 +39,16 @@ func query(db *db.Client) http.HandlerFunc {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 
+		w.WriteHeader(http.StatusOK)
+		if len(res) == 0 {
+			w.Write([]byte("[]"))
+
+		}
 		csv := csv.NewWriter(w)
 		err = csv.Write(res)
 		if err != nil {
 			slog.ErrorContext(ctx, fmt.Sprintf("marshall result: %s", err))
 			w.WriteHeader(http.StatusInternalServerError)
 		}
-		w.WriteHeader(http.StatusOK)
 	}
 }

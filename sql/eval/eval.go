@@ -53,7 +53,7 @@ func (e *Evaluator) evalSelect(ctx context.Context, sel parser.Select) ([]object
 
 func (e *Evaluator) evalFrom(ctx context.Context, from parser.From) ([]object.Row, error) {
 	if from.Where != nil && from.Where.Column == "id" {
-		r, ok, err := e.client.Get(ctx, from.Table, from.Where.Column)
+		r, ok, err := e.client.Get(ctx, from.Table, from.Where.Value)
 		if err != nil {
 			return nil, err
 		}
@@ -71,7 +71,9 @@ func (e *Evaluator) evalFrom(ctx context.Context, from parser.From) ([]object.Ro
 	if from.Where != nil {
 		var out []object.Row
 		for _, r := range rows {
-			out = append(out, r)
+			if r[from.Where.Column] == from.Where.Value {
+				out = append(out, r)
+			}
 		}
 		return out, nil
 	}
