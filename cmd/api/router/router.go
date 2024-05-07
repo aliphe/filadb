@@ -31,6 +31,7 @@ func Init(db *db.Client, opts ...Option) *chi.Mux {
 
 	r.Get("/", get(db))
 	r.Post("/", set(db))
+	r.Post("/query", query(db))
 
 	return r
 }
