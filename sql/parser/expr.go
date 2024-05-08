@@ -28,7 +28,7 @@ func clearWhitespaces(tokens []*lexer.Token) []*lexer.Token {
 
 func (e *expr) read(n int) ([]*lexer.Token, *expr, error) {
 	if n > len(e.tokens) {
-		return nil, nil, ErrUnexpectedEndOfInput
+		return nil, nil, ErrEndOfInput
 	}
 	return e.tokens[0:n], &expr{
 		tokens: e.tokens[n:],

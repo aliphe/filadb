@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/aliphe/filadb/db/object"
 	"github.com/aliphe/filadb/sql/lexer"
 )
 
 var (
-	ErrUnexpectedEndOfInput = errors.New("unexpexted end of input")
+	ErrEndOfInput = errors.New("unexpexted end of input")
 )
 
 type UnexpectedTokenError struct {
@@ -33,7 +34,10 @@ type SQLQuery struct {
 	Insert Insert
 }
 
-type Insert struct{}
+type Insert struct {
+	Table string
+	Rows  []object.Row
+}
 
 type Select struct {
 	Fields []Field
@@ -73,31 +77,26 @@ func Parse(tokens []*lexer.Token) (SQLQuery, error) {
 	if err != nil {
 		return SQLQuery{}, err
 	}
-	switch cur[0].Kind {
-	case lexer.KindSelect:
-		{
-			sel, exp, err := parseSelect(expr)
-			if err != nil {
-				return SQLQuery{}, err
-			}
-			out.Select = sel
-			expr = exp
-			out.Type = QueryTypeSelect
+	if cur[0].Kind == lexer.KindSelect {
+		sel, exp, err := parseSelect(expr)
+		if err != nil {
+			return SQLQuery{}, err
 		}
-	case lexer.KindInsert:
-		{
-			ins, exp, err := parseInsert(expr)
-			if err != nil {
-				return SQLQuery{}, err
-			}
-			out.Insert = ins
-			expr = exp
-			out.Type = QueryTypeInsert
+		out.Select = sel
+		expr = exp
+		out.Type = QueryTypeSelect
+	} else if cur[0].Kind == lexer.KindInsert {
+		ins, exp, err := parseInsert(expr)
+		if err != nil {
+			return SQLQuery{}, err
 		}
+		out.Insert = ins
+		expr = exp
+		out.Type = QueryTypeInsert
 	}
 	_, exp, err := expr.expectRead(1, lexer.KindSemiColumn)
 	if err != nil {
-		if !errors.Is(err, ErrUnexpectedEndOfInput) {
+		if !errors.Is(err, ErrEndOfInput) {
 			return SQLQuery{}, err
 		}
 	} else {
@@ -111,8 +110,102 @@ func Parse(tokens []*lexer.Token) (SQLQuery, error) {
 	return out, nil
 }
 
-func parseInsert(_ *expr) (Insert, *expr, error) {
-	return Insert{}, nil, errors.New("not implemented")
+func parseInsert(in *expr) (Insert, *expr, error) {
+	cur, expr, err := in.expectRead(2, lexer.KindInto, lexer.KindLiteral)
+	if err != nil {
+		return Insert{}, nil, fmt.Errorf("parse insert: %w", err)
+	}
+	table := cur[1].Value
+
+	cols, expr, err := parseCols(expr)
+	if err != nil {
+		return Insert{}, nil, fmt.Errorf("parse insert columns: %w", err)
+	}
+
+	_, expr, err = expr.expectRead(1, lexer.KindValues)
+	if err != nil {
+		return Insert{}, nil, err
+	}
+	values, expr, err := parseValues(expr, cols)
+	if err != nil {
+		return Insert{}, nil, fmt.Errorf("parse insert values: %w", err)
+	}
+
+	return Insert{
+		Table: table,
+		Rows:  values,
+	}, expr, nil
+}
+
+func parseCols(in *expr) ([]string, *expr, error) {
+	col, expr, err := parseCSV(in)
+	if err != nil {
+		return nil, nil, fmt.Errorf("parse insert columns: %w", err)
+	}
+
+	cols := make([]string, 0, len(col))
+	for _, c := range col {
+		cols = append(cols, c.(string))
+	}
+
+	return cols, expr, nil
+}
+
+func parseCSV(in *expr) ([]interface{}, *expr, error) {
+	_, expr, err := in.expectRead(1, lexer.KindOpenParen)
+	if err != nil {
+		return nil, nil, err
+	}
+	var row []interface{}
+	for {
+		cur, exp, err := expr.read(2)
+		if err != nil {
+			return nil, nil, err
+		}
+		expr = exp
+		row = append(row, cur[0].Value)
+
+		if cur[1].Kind == lexer.KindCloseParen {
+			break
+		}
+		if cur[1].Kind != lexer.KindComma {
+			return nil, nil, UnexpectedTokenError{cur[1]}
+		}
+	}
+	return row, expr, nil
+}
+
+func parseValues(in *expr, cols []string) ([]object.Row, *expr, error) {
+	vals, expr, err := parseCSV(in)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	row := make(object.Row, 0)
+	for i := range cols {
+		row[cols[i]] = vals[i]
+	}
+
+	cur, exp, err := expr.read(1)
+	if err != nil {
+		if errors.Is(err, ErrEndOfInput) {
+			// return the last one
+			return []object.Row{row}, expr, nil
+		}
+		return nil, nil, err
+	}
+
+	// append the next values row
+	if cur[0].Kind == lexer.KindComma {
+		r, expr, err := parseValues(exp, cols)
+		if err != nil {
+			return nil, nil, err
+		}
+		return append(r, row), expr, nil
+	}
+
+	// return the last one
+	return []object.Row{row}, exp, nil
 }
 
 func parseSelect(in *expr) (Select, *expr, error) {

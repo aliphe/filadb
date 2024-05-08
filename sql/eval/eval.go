@@ -7,6 +7,7 @@ import (
 	"github.com/aliphe/filadb/db"
 	"github.com/aliphe/filadb/db/object"
 	"github.com/aliphe/filadb/sql/parser"
+	"github.com/google/uuid"
 )
 
 type Evaluator struct {
@@ -20,7 +21,11 @@ func New(client *db.Client) *Evaluator {
 }
 
 func (e *Evaluator) EvalExpr(ctx context.Context, ast parser.SQLQuery) ([]object.Row, error) {
-	return e.evalSelect(ctx, ast.Select)
+	if ast.Type == parser.QueryTypeInsert {
+		return nil, e.evalInsert(ctx, ast.Insert)
+	} else {
+		return e.evalSelect(ctx, ast.Select)
+	}
 }
 
 func (e *Evaluator) evalSelect(ctx context.Context, sel parser.Select) ([]object.Row, error) {
@@ -49,6 +54,23 @@ func (e *Evaluator) evalSelect(ctx context.Context, sel parser.Select) ([]object
 		out = append(out, ins)
 	}
 	return out, nil
+}
+
+func (e *Evaluator) evalInsert(ctx context.Context, ins parser.Insert) error {
+	for _, r := range ins.Rows {
+		var id string
+		if r["id"] != nil {
+			id = r["id"].(string)
+		} else {
+			id = uuid.New().String()
+			r["id"] = id
+		}
+		err := e.client.Insert(ctx, ins.Table, id, r)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (e *Evaluator) evalFrom(ctx context.Context, from parser.From) ([]object.Row, error) {

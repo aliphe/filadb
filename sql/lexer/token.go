@@ -71,6 +71,7 @@ var matchers = []Matcher{
 			KindSemiColumn, KindQuote, KindDoubleQuote,
 			KindEqual, KindAbove, KindBelow,
 			KindInto, KindOpenParen, KindCloseParen,
+			KindValues,
 		} {
 			_, ok := strings.CutPrefix(strings.ToLower(s), strings.ToLower(string(tok)))
 			if ok {
