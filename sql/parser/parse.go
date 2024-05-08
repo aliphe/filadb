@@ -39,7 +39,7 @@ type From struct {
 }
 
 type Where struct {
-	Filter
+	Filters []Filter
 }
 
 type Filter struct {
@@ -55,14 +55,22 @@ const (
 )
 
 func Parse(tokens []*lexer.Token) (SQLQuery, error) {
-	expr := newExpr(tokens)
+	in := newExpr(tokens)
 
-	sel, cur, err := parseSelect(expr)
+	sel, expr, err := parseSelect(in)
 	if err != nil {
 		return SQLQuery{}, err
 	}
-	if cur.cursor < len(expr.tokens)-1 {
-		return SQLQuery{}, UnexpectedTokenError{tokens[cur.cursor]}
+
+	_, expr, err = expr.expectRead(1, lexer.KindSemiColumn)
+	if err != nil {
+		if !errors.Is(err, ErrUnexpectedEndOfInput) {
+			return SQLQuery{}, err
+		}
+	}
+
+	if expr.cursor < len(in.tokens)-1 {
+		return SQLQuery{}, UnexpectedTokenError{tokens[expr.cursor]}
 	}
 
 	// TODO return the biggest cursor of select/insert
@@ -133,12 +141,9 @@ func parseFrom(in *expr) (From, *expr, error) {
 		return From{}, nil, err
 	}
 
-	where, selExpr, err := parseWhere(expr)
-	// where is optional
-	if err != nil && !errors.Is(err, ErrUnexpectedEndOfInput) {
-		return From{}, in, fmt.Errorf("parse where: %w", err)
-	} else if err == nil {
-		expr = selExpr
+	where, expr, err := parseWhere(expr)
+	if err != nil {
+		return From{}, nil, err
 	}
 
 	return From{
@@ -150,16 +155,30 @@ func parseFrom(in *expr) (From, *expr, error) {
 func parseWhere(in *expr) (*Where, *expr, error) {
 	_, expr, err := in.expectRead(1, lexer.KindWhere)
 	if err != nil {
-		return nil, nil, err
+		return nil, in, nil
 	}
 
 	filter, expr, err := parseFilter(expr)
 	if err != nil {
 		return nil, nil, err
 	}
+	var filters []Filter
+	filters = append(filters, filter)
+	for {
+		_, exp, err := expr.expectRead(1, lexer.KindAnd)
+		if err != nil {
+			break
+		}
+		filter, exp, err := parseFilter(exp)
+		if err != nil {
+			return nil, nil, err
+		}
+		filters = append(filters, filter)
+		expr = exp
+	}
 
 	return &Where{
-		Filter: filter,
+		Filters: filters,
 	}, expr, nil
 }
 

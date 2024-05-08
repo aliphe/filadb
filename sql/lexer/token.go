@@ -16,6 +16,7 @@ const (
 	KindInsert Kind = "INSERT"
 	KindFrom   Kind = "FROM"
 	KindWhere  Kind = "WHERE"
+	KindAnd    Kind = "AND"
 
 	// users, id, etc.
 	KindLiteral Kind = "LITERAL"
@@ -65,6 +66,7 @@ var matchers = []Matcher{
 			KindWhere, KindNewLine, KindComma,
 			KindSemiColumn, KindQuote, KindDoubleQuote,
 			KindEqual, KindAbove, KindBelow,
+			KindAnd,
 		} {
 			_, ok := strings.CutPrefix(strings.ToLower(s), strings.ToLower(string(tok)))
 			if ok {

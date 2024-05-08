@@ -52,8 +52,9 @@ func (e *Evaluator) evalSelect(ctx context.Context, sel parser.Select) ([]object
 }
 
 func (e *Evaluator) evalFrom(ctx context.Context, from parser.From) ([]object.Row, error) {
-	if from.Where != nil && from.Where.Column == "id" {
-		r, ok, err := e.client.Get(ctx, from.Table, from.Where.Value)
+	id, hasId := idFilter(from.Where)
+	if hasId {
+		r, ok, err := e.client.Get(ctx, from.Table, id)
 		if err != nil {
 			return nil, err
 		}
@@ -69,14 +70,40 @@ func (e *Evaluator) evalFrom(ctx context.Context, from parser.From) ([]object.Ro
 	}
 
 	if from.Where != nil {
-		var out []object.Row
-		for _, r := range rows {
-			if r[from.Where.Column] == from.Where.Value {
-				out = append(out, r)
-			}
-		}
-		return out, nil
+		return filter(rows, from.Where.Filters), nil
 	}
 
 	return rows, nil
+}
+
+func idFilter(where *parser.Where) (string, bool) {
+	if where != nil {
+		for _, f := range where.Filters {
+			if f.Column == "id" && f.Op == parser.OpEqual {
+				return f.Value, true
+			}
+		}
+	}
+	return "", false
+}
+
+func filter(rows []object.Row, f []parser.Filter) []object.Row {
+	var out []object.Row
+	for _, r := range rows {
+		if matches(r, f) {
+			out = append(out, r)
+		}
+	}
+
+	return out
+}
+
+func matches(row object.Row, filters []parser.Filter) bool {
+	for _, f := range filters {
+		if f.Op == parser.OpEqual && row[f.Column] != f.Value {
+			return false
+		}
+	}
+
+	return true
 }
