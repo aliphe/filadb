@@ -23,8 +23,9 @@ func query(db *db.Client) http.HandlerFunc {
 				w.WriteHeader(http.StatusBadRequest)
 				fmt.Fprint(w, "body is required")
 				return
+			} else {
+				fmt.Fprintf(w, "parsing body: %s", err)
 			}
-			slog.ErrorContext(ctx, fmt.Sprintf("parse body: %b", err))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -36,21 +37,22 @@ func query(db *db.Client) http.HandlerFunc {
 
 		res, err := sql.Run(ctx, query)
 		if err != nil {
-			slog.ErrorContext(ctx, fmt.Sprintf("run sql query: %s", err))
+			fmt.Fprintf(w, "run sql query: %s", err)
 			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
 
 		w.WriteHeader(http.StatusOK)
 		if len(res) == 0 {
 			w.Write([]byte("[]"))
-
+			return
 		}
 		csv := csv.NewWriter(w)
 		err = csv.Write(res)
 		if err != nil {
-			slog.ErrorContext(ctx, fmt.Sprintf("marshall result: %s", err))
+			fmt.Fprintf(w, "marshall result: %s", err)
 			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
-
 	}
 }

@@ -14,6 +14,8 @@ const (
 	// SQL keywords
 	KindSelect Kind = "SELECT"
 	KindInsert Kind = "INSERT"
+	KindInto   Kind = "INTO"
+	KindValues Kind = "VALUES"
 	KindFrom   Kind = "FROM"
 	KindWhere  Kind = "WHERE"
 	KindAnd    Kind = "AND"
@@ -27,6 +29,8 @@ const (
 	KindQuote       Kind = "'"
 	KindDoubleQuote Kind = "\""
 	KindEOF         Kind = ""
+	KindOpenParen   Kind = "("
+	KindCloseParen  Kind = ")"
 
 	KindEqual Kind = "="
 	KindAbove Kind = ">"
@@ -66,6 +70,7 @@ var matchers = []Matcher{
 			KindWhere, KindAnd, KindComma,
 			KindSemiColumn, KindQuote, KindDoubleQuote,
 			KindEqual, KindAbove, KindBelow,
+			KindInto, KindOpenParen, KindCloseParen,
 		} {
 			_, ok := strings.CutPrefix(strings.ToLower(s), strings.ToLower(string(tok)))
 			if ok {

@@ -17,12 +17,23 @@ type UnexpectedTokenError struct {
 }
 
 func (u UnexpectedTokenError) Error() string {
-	return fmt.Sprintf("unexpected token %s at position %d", u.token.Value, u.token.Position)
+	return fmt.Sprintf("unexpected token \"%s\" at position %d", u.token.Value, u.token.Position)
 }
 
+type QueryType string
+
+const (
+	QueryTypeSelect QueryType = "select"
+	QueryTypeInsert QueryType = "insert"
+)
+
 type SQLQuery struct {
+	Type   QueryType
 	Select Select
+	Insert Insert
 }
+
+type Insert struct{}
 
 type Select struct {
 	Fields []Field
@@ -56,39 +67,56 @@ const (
 
 func Parse(tokens []*lexer.Token) (SQLQuery, error) {
 	in := newExpr(tokens)
+	out := SQLQuery{}
 
-	sel, expr, err := parseSelect(in)
+	cur, expr, err := in.read(1)
 	if err != nil {
 		return SQLQuery{}, err
 	}
-
-	_, expr, err = expr.expectRead(1, lexer.KindSemiColumn)
+	switch cur[0].Kind {
+	case lexer.KindSelect:
+		{
+			sel, exp, err := parseSelect(expr)
+			if err != nil {
+				return SQLQuery{}, err
+			}
+			out.Select = sel
+			expr = exp
+			out.Type = QueryTypeSelect
+		}
+	case lexer.KindInsert:
+		{
+			ins, exp, err := parseInsert(expr)
+			if err != nil {
+				return SQLQuery{}, err
+			}
+			out.Insert = ins
+			expr = exp
+			out.Type = QueryTypeInsert
+		}
+	}
+	_, exp, err := expr.expectRead(1, lexer.KindSemiColumn)
 	if err != nil {
 		if !errors.Is(err, ErrUnexpectedEndOfInput) {
 			return SQLQuery{}, err
 		}
+	} else {
+		expr = exp
 	}
 
 	if expr.cursor < len(in.tokens)-1 {
 		return SQLQuery{}, UnexpectedTokenError{tokens[expr.cursor]}
 	}
 
-	// TODO return the biggest cursor of select/insert
-	return SQLQuery{
-		Select: sel,
-	}, nil
+	return out, nil
+}
+
+func parseInsert(_ *expr) (Insert, *expr, error) {
+	return Insert{}, nil, errors.New("not implemented")
 }
 
 func parseSelect(in *expr) (Select, *expr, error) {
-	cur, expr, err := in.read(1)
-	if err != nil {
-		return Select{}, in, err
-	}
-	if cur[0].Kind != lexer.KindSelect {
-		return Select{}, in, UnexpectedTokenError{cur[0]}
-	}
-
-	fields, expr, err := parseFields(expr)
+	fields, expr, err := parseFields(in)
 	if err != nil {
 		return Select{}, in, fmt.Errorf("parse select fields: %w", err)
 	}
