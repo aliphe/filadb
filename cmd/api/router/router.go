@@ -29,8 +29,6 @@ func Init(db *db.Client, opts ...Option) *chi.Mux {
 		w.Write([]byte("OK"))
 	})
 
-	r.Get("/", get(db))
-	r.Post("/", set(db))
 	r.Post("/query", query(db))
 
 	return r
