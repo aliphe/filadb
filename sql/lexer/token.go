@@ -52,7 +52,7 @@ type Matcher func(string) (bool, *Token)
 var matchers = []Matcher{
 	// Whitespace
 	func(s string) (bool, *Token) {
-		var whitespaces = []rune{' ', '\t'}
+		var whitespaces = []rune{' ', '\t', '\n'}
 
 		if slices.Contains(whitespaces, rune(s[0])) {
 			return true, NewToken(KindWhitespace, s[0:1])
@@ -63,10 +63,9 @@ var matchers = []Matcher{
 	func(s string) (bool, *Token) {
 		for _, tok := range []Kind{
 			KindSelect, KindInsert, KindFrom,
-			KindWhere, KindNewLine, KindComma,
+			KindWhere, KindAnd, KindComma,
 			KindSemiColumn, KindQuote, KindDoubleQuote,
 			KindEqual, KindAbove, KindBelow,
-			KindAnd,
 		} {
 			_, ok := strings.CutPrefix(strings.ToLower(s), strings.ToLower(string(tok)))
 			if ok {
