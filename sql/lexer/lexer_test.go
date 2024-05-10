@@ -9,51 +9,24 @@ import (
 func Test_NextToken(t *testing.T) {
 	tests := []struct {
 		given string
-		want  []*Token
+		want  []Kind
 	}{
 		{
-			given: `SELECT *\tfrom users where name = "alif" and id = 1;`,
-			want: []*Token{
-				{
-					Kind:     KindSelect,
-					Value:    "SELECT",
-					Position: 0,
-				},
-				{
-					Kind:     KindWhitespace,
-					Value:    " ",
-					Position: 6,
-				},
-				{
-					Kind:     KindIdentifier,
-					Value:    "*",
-					Position: 7,
-				},
-				{
-					Kind:     KindWhitespace,
-					Value:    "\t",
-					Position: 8,
-				},
-				{
-					Kind:     KindFrom,
-					Value:    "from",
-					Position: 9,
-				},
-				{
-					Kind:     KindWhitespace,
-					Value:    " ",
-					Position: 13,
-				},
-				{
-					Kind:     KindIdentifier,
-					Value:    "users",
-					Position: 14,
-				},
-				{
-					Kind:     KindSemiColumn,
-					Value:    ";",
-					Position: 19,
-				},
+			given: `SELECT * from users where name = 'alif' and id = 1;`,
+			want: []Kind{
+				KindSelect,
+				KindIdentifier,
+				KindFrom,
+				KindIdentifier,
+				KindWhere,
+				KindIdentifier,
+				KindEqual,
+				KindStringLiteral,
+				KindAnd,
+				KindIdentifier,
+				KindEqual,
+				KindNumberLiteral,
+				KindSemiColumn,
 			},
 		},
 	}
@@ -61,7 +34,11 @@ func Test_NextToken(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.given, func(t *testing.T) {
 			got, _ := Tokenize(tc.given)
-			if diff := cmp.Diff(tc.want, got); diff != "" {
+			g := make([]Kind, 0, len(got))
+			for _, got := range got {
+				g = append(g, got.Kind)
+			}
+			if diff := cmp.Diff(tc.want, g); diff != "" {
 				t.Fatalf("Tokenize() mismatch (-want +got):\n%s", diff)
 			}
 		})

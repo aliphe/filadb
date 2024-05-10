@@ -27,7 +27,9 @@ func Tokenize(expr string) ([]*Token, error) {
 			match := biggest(matches)
 			match.Position = pos
 			pos += match.Len
-			tokens = append(tokens, match)
+			if match.Kind != KindWhitespace {
+				tokens = append(tokens, match)
+			}
 		} else {
 			return nil, errors.New("invalid expression")
 		}
