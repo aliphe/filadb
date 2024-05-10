@@ -91,6 +91,14 @@ func (b *BTree[K]) updateRoot(ctx context.Context, curr *Node[K], refs []*Ref[K]
 }
 
 func (b *BTree[K]) Add(ctx context.Context, node string, key K, val []byte) error {
+	return b.set(ctx, node, key, val, false)
+}
+
+func (b *BTree[K]) Set(ctx context.Context, node string, key K, val []byte) error {
+	return b.set(ctx, node, key, val, true)
+}
+
+func (b *BTree[K]) set(ctx context.Context, node string, key K, val []byte, update bool) error {
 	root, ok, err := b.root(ctx, NodeID(node))
 	if err != nil {
 		return fmt.Errorf("acquire root: %w", err)
@@ -103,7 +111,7 @@ func (b *BTree[K]) Add(ctx context.Context, node string, key K, val []byte) erro
 	newRoot, err := b.insert(ctx, root, &KeyVal[K]{
 		Key: key,
 		Val: val,
-	})
+	}, update)
 	if err != nil {
 		return fmt.Errorf("insert key: %w", err)
 	}
@@ -113,6 +121,7 @@ func (b *BTree[K]) Add(ctx context.Context, node string, key K, val []byte) erro
 	}
 
 	return nil
+
 }
 
 func (b *BTree[K]) Get(ctx context.Context, node string, key K) ([]byte, bool, error) {
@@ -228,10 +237,10 @@ func exists[K Key](keys []*KeyVal[K], refs []*Ref[K], key K) bool {
 	return false
 }
 
-func (b *BTree[K]) insert(ctx context.Context, n *Node[K], kv *KeyVal[K]) ([]*Ref[K], error) {
+func (b *BTree[K]) insert(ctx context.Context, n *Node[K], kv *KeyVal[K], update bool) ([]*Ref[K], error) {
 	var keys []*KeyVal[K] = n.Keys()
 	var refs []*Ref[K] = n.Refs()
-	if exists(keys, refs, kv.Key) {
+	if !update && exists(keys, refs, kv.Key) {
 		return nil, fmt.Errorf("key %v: %w", kv.Key, ErrDuplicate)
 	}
 
@@ -242,19 +251,16 @@ func (b *BTree[K]) insert(ctx context.Context, n *Node[K], kv *KeyVal[K]) ([]*Re
 			return nil, fmt.Errorf("find node to insert value: %w", err)
 		}
 
-		movingUp, err = b.insert(ctx, r, kv)
+		movingUp, err = b.insert(ctx, r, kv, update)
 		if err != nil {
 			return nil, err
 		}
 		if movingUp != nil {
-			refs = insertRefs[K](n.Refs(), movingUp)
+			refs = insertRefs(n.Refs(), movingUp)
 			movingUp = nil
 		}
 	} else {
-		keys = append(n.Keys(), kv)
-		slices.SortFunc(keys, func(a, b *KeyVal[K]) int {
-			return cmp.Compare(a.Key, b.Key)
-		})
+		keys = dedup(append(n.Keys(), kv))
 	}
 
 	if len(keys) > b.order {
@@ -312,6 +318,23 @@ func (b *BTree[K]) insert(ctx context.Context, n *Node[K], kv *KeyVal[K]) ([]*Re
 	n.SetRefs(refs)
 	b.store.Save(ctx, n)
 	return movingUp, nil
+}
+
+func dedup[K Key](kv []*KeyVal[K]) []*KeyVal[K] {
+	m := make(map[K]*KeyVal[K])
+	for _, kv := range kv {
+		m[kv.Key] = kv
+	}
+
+	out := make([]*KeyVal[K], 0, len(m))
+	for _, kv := range m {
+		out = append(out, kv)
+	}
+
+	slices.SortFunc(out, func(a, b *KeyVal[K]) int {
+		return cmp.Compare(a.Key, b.Key)
+	})
+	return out
 }
 
 func insertRefs[K Key](refs []*Ref[K], new []*Ref[K]) []*Ref[K] {

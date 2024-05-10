@@ -16,8 +16,10 @@ const (
 	// SQL keywords
 	KindSelect Kind = "SELECT"
 	KindInsert Kind = "INSERT"
+	KindUpdate Kind = "UPDATE"
 	KindInto   Kind = "INTO"
 	KindValues Kind = "VALUES"
+	KindSet    Kind = "SET"
 	KindFrom   Kind = "FROM"
 	KindWhere  Kind = "WHERE"
 	KindAnd    Kind = "AND"
@@ -78,7 +80,7 @@ var matchers = []Matcher{
 		for _, tok := range []Kind{
 			KindSelect, KindInsert, KindFrom, KindWhere, KindAnd, KindComma, KindSemiColumn,
 			KindEqual, KindAbove, KindBelow, KindInto, KindOpenParen, KindCloseParen,
-			KindValues, KindTable, KindCreate, KindText, KindNumber,
+			KindValues, KindTable, KindCreate, KindText, KindNumber, KindUpdate, KindSet,
 		} {
 			_, ok := strings.CutPrefix(strings.ToLower(s), strings.ToLower(string(tok)))
 			if ok {

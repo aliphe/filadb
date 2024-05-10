@@ -3,7 +3,6 @@ package eval
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"github.com/aliphe/filadb/db"
 	"github.com/aliphe/filadb/db/object"
@@ -27,11 +26,31 @@ func (e *Evaluator) EvalExpr(ctx context.Context, ast parser.SQLQuery) ([]object
 		return nil, e.evalInsert(ctx, ast.Insert)
 	} else if ast.Type == parser.QueryTypeSelect {
 		return e.evalSelect(ctx, ast.Select)
+	} else if ast.Type == parser.QueryTypeUpdate {
+		return nil, e.evalUpdate(ctx, ast.Update)
 	} else if ast.Type == parser.QueryTypeCreateTable {
 		return nil, e.evalCreateTable(ctx, ast.CreateTable)
 	} else {
 		return nil, fmt.Errorf("%s not implemented", ast.Type)
 	}
+}
+
+func (e *Evaluator) evalUpdate(ctx context.Context, update parser.Update) error {
+	rows, err := e.evalFrom(ctx, update.From)
+	if err != nil {
+		return fmt.Errorf("eval from: %w", err)
+	}
+
+	for _, r := range rows {
+		for k, v := range update.Set.Update {
+			r[k] = v
+		}
+		if err := e.client.Update(ctx, update.From.Table, r["id"].(string), r); err != nil {
+			return fmt.Errorf("apply update for row %v: %w", r["id"], err)
+		}
+	}
+
+	return nil
 }
 
 func (e *Evaluator) evalCreateTable(ctx context.Context, create parser.CreateTable) error {
@@ -43,7 +62,6 @@ func (e *Evaluator) evalCreateTable(ctx context.Context, create parser.CreateTab
 		Name: "id",
 		Type: schema.PropertyTypeText,
 	})
-	log.Printf("%+v", sch)
 
 	return e.client.CreateSchema(ctx, sch)
 }

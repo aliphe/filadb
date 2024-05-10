@@ -11,6 +11,7 @@ type ReaderWriter interface {
 
 type Writer interface {
 	Add(ctx context.Context, node, key string, val []byte) error
+	Set(ctx context.Context, node, key string, val []byte) error
 }
 
 type Reader interface {

@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	ErrEndOfInput = errors.New("unecpexted end of input")
+	ErrEndOfInput = errors.New("unexpected end of input")
 )
 
 type UnexpectedTokenError struct {
@@ -32,6 +32,7 @@ type QueryType string
 const (
 	QueryTypeSelect      QueryType = "select"
 	QueryTypeInsert      QueryType = "insert"
+	QueryTypeUpdate      QueryType = "update"
 	QueryTypeCreateTable QueryType = "create table"
 )
 
@@ -39,6 +40,7 @@ type SQLQuery struct {
 	Type        QueryType
 	Select      Select
 	Insert      Insert
+	Update      Update
 	CreateTable CreateTable
 }
 
@@ -50,6 +52,15 @@ type CreateTable struct {
 type Insert struct {
 	Table string
 	Rows  []object.Row
+}
+
+type Update struct {
+	From From
+	Set  Set
+}
+
+type Set struct {
+	Update object.Row
 }
 
 type Select struct {
@@ -91,6 +102,7 @@ func Parse(tokens []*lexer.Token) (SQLQuery, error) {
 			is(lexer.KindSelect),
 			is(lexer.KindInsert),
 			is(lexer.KindCreate),
+			is(lexer.KindUpdate),
 		))
 	if err != nil {
 		return SQLQuery{}, err
@@ -110,6 +122,14 @@ func Parse(tokens []*lexer.Token) (SQLQuery, error) {
 		}
 		out.Insert = ins
 		out.Type = QueryTypeInsert
+		expr = exp
+	} else if cur[0].Kind == lexer.KindUpdate {
+		up, exp, err := parseUpdate(expr)
+		if err != nil {
+			return SQLQuery{}, err
+		}
+		out.Update = up
+		out.Type = QueryTypeUpdate
 		expr = exp
 	} else if cur[0].Kind == lexer.KindCreate {
 		create, exp, err := parseCreateTable(expr)
@@ -136,6 +156,54 @@ func Parse(tokens []*lexer.Token) (SQLQuery, error) {
 	}
 
 	return out, nil
+}
+
+func parseUpdate(in *expr) (Update, *expr, error) {
+	cur, expr, err := in.read(1, sequence(
+		is(lexer.KindIdentifier),
+	))
+	if err != nil {
+		return Update{}, nil, err
+	}
+
+	table, ok := cur[0].Value.(string)
+	if !ok {
+		return Update{}, nil, fmt.Errorf("invalid table name %v", cur[0].Value)
+	}
+
+	set, expr, err := parseSet(expr)
+	if err != nil {
+		return Update{}, nil, fmt.Errorf("parse set: %w", err)
+	}
+
+	where, expr, err := parseWhere(expr)
+	if err != nil {
+		return Update{}, nil, fmt.Errorf("parse where: %w", err)
+	}
+
+	return Update{
+		From: From{
+			Table: table,
+			Where: where,
+		},
+		Set: set,
+	}, expr, nil
+}
+
+func parseSet(in *expr) (Set, *expr, error) {
+	_, expr, err := in.read(1, is(lexer.KindSet))
+	if err != nil {
+		return Set{}, nil, err
+	}
+
+	row, expr, err := parseRow(expr)
+	if err != nil {
+		return Set{}, nil, err
+	}
+
+	return Set{
+		Update: row,
+	}, expr, nil
 }
 
 func parseCreateTable(in *expr) (CreateTable, *expr, error) {
@@ -227,6 +295,38 @@ func parseCSV(in *expr) ([]interface{}, *expr, error) {
 	return row, expr, nil
 }
 
+func parseRow(in *expr) (object.Row, *expr, error) {
+	_, expr, err := in.read(1, is(lexer.KindOpenParen))
+	if err != nil {
+		return nil, nil, err
+	}
+	out := make(object.Row)
+	for {
+		cur, exp, err := expr.read(4,
+			sequence(
+				is(lexer.KindIdentifier),
+				is(lexer.KindEqual),
+				oneOf(is(lexer.KindText), is(lexer.KindNumber)),
+				oneOf(is(lexer.KindCloseParen), is(lexer.KindComma)),
+			))
+		if err != nil {
+			return nil, nil, err
+		}
+
+		expr = exp
+		propName, ok := cur[0].Value.(string)
+		if !ok {
+			return nil, nil, fmt.Errorf("invalid property name %v", cur[0].Value)
+		}
+		out[propName] = cur[2].Value
+
+		if cur[3].Kind == lexer.KindCloseParen {
+			break
+		}
+	}
+	return out, expr, nil
+}
+
 func parseKeyValuePairs(in *expr) ([]schema.Property, *expr, error) {
 	_, expr, err := in.read(1, is(lexer.KindOpenParen))
 	if err != nil {
@@ -242,9 +342,6 @@ func parseKeyValuePairs(in *expr) ([]schema.Property, *expr, error) {
 			))
 		if err != nil {
 			return nil, nil, err
-		}
-		if cur[0].Kind != lexer.KindIdentifier {
-			return nil, nil, newUnexpectedTokenError(cur[0], lexer.KindIdentifier)
 		}
 
 		expr = exp

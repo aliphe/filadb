@@ -35,6 +35,20 @@ func (q *Client) Insert(ctx context.Context, tab, id string, row object.Row) err
 	return nil
 }
 
+func (q *Client) Update(ctx context.Context, tab, id string, row object.Row) error {
+	b, err := q.schema.Marshal(ctx, tab, row)
+	if err != nil {
+		return fmt.Errorf("validate data: %w", err)
+	}
+
+	err = q.store.Set(ctx, tab, id, b)
+	if err != nil {
+		return fmt.Errorf("insert data: %w", err)
+	}
+
+	return nil
+}
+
 func (q *Client) Get(ctx context.Context, table, id string) (object.Row, bool, error) {
 	d, ok, err := q.store.Get(ctx, table, id)
 	if err != nil {
