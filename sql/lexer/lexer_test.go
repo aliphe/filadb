@@ -12,7 +12,7 @@ func Test_NextToken(t *testing.T) {
 		want  []*Token
 	}{
 		{
-			given: `SELECT *\tfrom users where name = "alif";`,
+			given: `SELECT *\tfrom users where name = "alif" and id = 1;`,
 			want: []*Token{
 				{
 					Kind:     KindSelect,

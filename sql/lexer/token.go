@@ -2,6 +2,7 @@ package lexer
 
 import (
 	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -46,12 +47,12 @@ const (
 
 type Token struct {
 	Kind     Kind
-	Value    string
+	Value    interface{}
 	Len      int
 	Position int
 }
 
-func NewToken(t Kind, val string, len int) *Token {
+func NewToken(t Kind, val interface{}, len int) *Token {
 	return &Token{
 		Kind:  t,
 		Value: val,
@@ -122,7 +123,8 @@ var matchers = []Matcher{
 		var i = 0
 		for ; i < len(s) && s[i] >= '0' && s[i] <= '9'; i++ {
 		}
-		return i > 0, NewToken(KindNumberLiteral, s[:i], i)
+		n, _ := strconv.Atoi(s[:i])
+		return i > 0, NewToken(KindNumberLiteral, n, i)
 	},
 
 	// Illegal

@@ -3,6 +3,7 @@ package eval
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/aliphe/filadb/db"
 	"github.com/aliphe/filadb/db/object"
@@ -42,6 +43,7 @@ func (e *Evaluator) evalCreateTable(ctx context.Context, create parser.CreateTab
 		Name: "id",
 		Type: schema.PropertyTypeText,
 	})
+	log.Printf("%+v", sch)
 
 	return e.client.CreateSchema(ctx, sch)
 }
@@ -120,7 +122,7 @@ func idFilter(where *parser.Where) (string, bool) {
 	if where != nil {
 		for _, f := range where.Filters {
 			if f.Column == "id" && f.Op == parser.OpEqual {
-				return f.Value, true
+				return f.Value.(string), true
 			}
 		}
 	}

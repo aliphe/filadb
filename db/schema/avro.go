@@ -32,7 +32,8 @@ type avroField struct {
 }
 
 var avroTypeMapper = map[PropertyType]string{
-	PropertyTypeText: string(fieldTypeString),
+	PropertyTypeText:   string(fieldTypeString),
+	PropertyTypeNumber: string(fieldTypeNumber),
 }
 
 type fieldType string
