@@ -26,7 +26,7 @@ func Tokenize(expr string) ([]*Token, error) {
 		if len(matches) > 0 {
 			match := biggest(matches)
 			match.Position = pos
-			pos += len(match.Value)
+			pos += match.Len
 			tokens = append(tokens, match)
 		} else {
 			return nil, errors.New("invalid expression")
@@ -39,7 +39,7 @@ func Tokenize(expr string) ([]*Token, error) {
 func biggest(tokens []*Token) *Token {
 	max := tokens[0]
 	for _, t := range tokens {
-		if len(t.Value) > len(max.Value) {
+		if t.Len > max.Len {
 			max = t
 		}
 	}

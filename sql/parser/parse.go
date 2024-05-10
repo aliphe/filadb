@@ -16,10 +16,15 @@ var (
 
 type UnexpectedTokenError struct {
 	token *lexer.Token
+	want  []lexer.Kind
+}
+
+func newUnexpectedTokenError(token *lexer.Token, want ...lexer.Kind) UnexpectedTokenError {
+	return UnexpectedTokenError{token, want}
 }
 
 func (u UnexpectedTokenError) Error() string {
-	return fmt.Sprintf("unexpected token \"%s\" at position %d", u.token.Value, u.token.Position)
+	return fmt.Sprintf("unexpected token \"%s\" at position %d, want one of %v", u.token.Value, u.token.Position, u.want)
 }
 
 type QueryType string
@@ -110,7 +115,7 @@ func Parse(tokens []*lexer.Token) (SQLQuery, error) {
 		out.Type = QueryTypeCreateTable
 		expr = exp
 	} else {
-		return SQLQuery{}, UnexpectedTokenError{cur[0]}
+		return SQLQuery{}, newUnexpectedTokenError(cur[0], lexer.KindCreate, lexer.KindSelect, lexer.KindInsert)
 	}
 	_, exp, err := expr.expectRead(1, lexer.KindSemiColumn)
 	if err != nil {
@@ -122,7 +127,7 @@ func Parse(tokens []*lexer.Token) (SQLQuery, error) {
 	}
 
 	if expr.cursor < len(in.tokens)-1 {
-		return SQLQuery{}, UnexpectedTokenError{tokens[expr.cursor]}
+		return SQLQuery{}, newUnexpectedTokenError(tokens[expr.cursor])
 	}
 
 	return out, nil
@@ -209,7 +214,7 @@ func parseCSV(in *expr) ([]interface{}, *expr, error) {
 			break
 		}
 		if cur[1].Kind != lexer.KindComma {
-			return nil, nil, UnexpectedTokenError{cur[1]}
+			return nil, nil, newUnexpectedTokenError(cur[1], lexer.KindComma)
 		}
 	}
 	return row, expr, nil
@@ -227,7 +232,7 @@ func parseKeyValuePairs(in *expr) ([]schema.Property, *expr, error) {
 			return nil, nil, err
 		}
 		if cur[0].Kind != lexer.KindIdentifier {
-			return nil, nil, UnexpectedTokenError{cur[0]}
+			return nil, nil, newUnexpectedTokenError(cur[0], lexer.KindIdentifier)
 		}
 
 		expr = exp
@@ -239,7 +244,7 @@ func parseKeyValuePairs(in *expr) ([]schema.Property, *expr, error) {
 		} else if cur[1].Kind == lexer.KindNumber {
 			prop.Type = schema.PropertyTypeNumber
 		} else {
-			return nil, nil, UnexpectedTokenError{cur[1]}
+			return nil, nil, newUnexpectedTokenError(cur[1], lexer.KindText, lexer.KindNumber)
 		}
 		out = append(out, prop)
 
@@ -247,7 +252,7 @@ func parseKeyValuePairs(in *expr) ([]schema.Property, *expr, error) {
 			break
 		}
 		if cur[2].Kind != lexer.KindComma {
-			return nil, nil, UnexpectedTokenError{cur[1]}
+			return nil, nil, newUnexpectedTokenError(cur[1], lexer.KindComma)
 		}
 	}
 	return out, expr, nil
@@ -387,10 +392,11 @@ func parseFilter(in *expr) (Filter, *expr, error) {
 		return Filter{}, nil, err
 	}
 	if cur[0].Kind != lexer.KindIdentifier {
-		return Filter{}, nil, UnexpectedTokenError{cur[0]}
+		return Filter{}, nil, newUnexpectedTokenError(cur[0], lexer.KindIdentifier)
 	}
-	if cur[2].Kind != lexer.KindIdentifier {
-		return Filter{}, nil, UnexpectedTokenError{cur[2]}
+	if cur[2].Kind != lexer.KindStringLiteral &&
+		cur[2].Kind != lexer.KindNumberLiteral {
+		return Filter{}, nil, newUnexpectedTokenError(cur[2], lexer.KindStringLiteral, lexer.KindNumberLiteral)
 	}
 
 	var op Op
@@ -398,7 +404,7 @@ func parseFilter(in *expr) (Filter, *expr, error) {
 	case lexer.KindEqual:
 		op = OpEqual
 	default:
-		return Filter{}, nil, UnexpectedTokenError{cur[1]}
+		return Filter{}, nil, newUnexpectedTokenError(cur[1], lexer.KindEqual)
 	}
 
 	return Filter{

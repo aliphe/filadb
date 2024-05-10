@@ -42,11 +42,11 @@ func (e *expr) expectRead(n int, kinds ...lexer.Kind) ([]*lexer.Token, *expr, er
 		return nil, nil, err
 	}
 	if len(toks) < len(kinds) {
-		return nil, nil, UnexpectedTokenError{toks[len(kinds)]}
+		return nil, nil, newUnexpectedTokenError(toks[len(kinds)])
 	}
 	for i := 0; i < len(kinds) && i < n; i++ {
 		if toks[i].Kind != kinds[i] {
-			return nil, nil, UnexpectedTokenError{toks[i]}
+			return nil, nil, newUnexpectedTokenError(toks[i], kinds[i])
 		}
 	}
 

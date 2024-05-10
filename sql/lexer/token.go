@@ -8,8 +8,9 @@ import (
 type Kind string
 
 const (
+	KindAny        Kind = ""
 	KindIllegal    Kind = "ILLEGAL"
-	KindWhitespace Kind = "WHITESPACE"
+	KindWhitespace      = "WHITESPACE"
 
 	// SQL keywords
 	KindSelect Kind = "SELECT"
@@ -27,9 +28,10 @@ const (
 	KindText   Kind = "TEXT"
 
 	// users, id, etc.
-	KindIdentifier Kind = "IDENTIFIER"
+	KindIdentifier    Kind = "IDENTIFIER"
+	KindStringLiteral Kind = "STRING_LITERAL"
+	KindNumberLiteral Kind = "NUMBER_LITERAL"
 
-	KindStar       Kind = "*"
 	KindNewLine    Kind = "\n"
 	KindComma      Kind = ","
 	KindSemiColumn Kind = ";"
@@ -45,13 +47,15 @@ const (
 type Token struct {
 	Kind     Kind
 	Value    string
+	Len      int
 	Position int
 }
 
-func NewToken(t Kind, val string) *Token {
+func NewToken(t Kind, val string, len int) *Token {
 	return &Token{
 		Kind:  t,
 		Value: val,
+		Len:   len,
 	}
 }
 
@@ -64,20 +68,20 @@ var matchers = []Matcher{
 		var whitespaces = []rune{' ', '\t', '\n'}
 
 		if slices.Contains(whitespaces, rune(s[0])) {
-			return true, NewToken(KindWhitespace, s[0:1])
+			return true, NewToken(KindWhitespace, s[0:1], 1)
 		}
 		return false, nil
 	},
 	// String matchers
 	func(s string) (bool, *Token) {
 		for _, tok := range []Kind{
-			KindSelect, KindInsert, KindFrom, KindWhere, KindAnd, KindComma, KindSemiColumn, KindStar,
+			KindSelect, KindInsert, KindFrom, KindWhere, KindAnd, KindComma, KindSemiColumn,
 			KindEqual, KindAbove, KindBelow, KindInto, KindOpenParen, KindCloseParen,
 			KindValues, KindTable, KindCreate, KindText, KindNumber,
 		} {
 			_, ok := strings.CutPrefix(strings.ToLower(s), strings.ToLower(string(tok)))
 			if ok {
-				return true, NewToken(tok, strings.Clone(s[:len(tok)]))
+				return true, NewToken(tok, strings.Clone(s[:len(tok)]), len(tok))
 			}
 		}
 		return false, nil
@@ -88,19 +92,18 @@ var matchers = []Matcher{
 		for _, c := range s {
 			if (c >= 'a' && c <= 'z') ||
 				(c >= 'A' && c <= 'Z') ||
-				(c >= '0' && c <= '9') ||
-				c == '_' {
+				c == '_' || c == '*' {
 				match += string(c)
 			} else {
 				break
 			}
 		}
 		if match != "" {
-			return true, NewToken(KindIdentifier, match)
+			return true, NewToken(KindIdentifier, match, len(match))
 		}
 		return false, nil
 	},
-	// Text
+	// String literal
 	func(s string) (bool, *Token) {
 		if s[0] != '"' {
 			return false, nil
@@ -108,20 +111,23 @@ var matchers = []Matcher{
 		var i = 1
 		for ; i < len(s) && s[i] != '"'; i++ {
 		}
+		if i == len(s) {
+			return false, nil
+		}
 
-		return true, NewToken(KindText, s[:i])
+		return true, NewToken(KindStringLiteral, s[1:i], i+1)
 	},
-	// Number
+	// Number literal
 	func(s string) (bool, *Token) {
 		var i = 0
 		for ; i < len(s) && s[i] >= '0' && s[i] <= '9'; i++ {
 		}
-		return i > 0, NewToken(KindNumber, s[:i])
+		return i > 0, NewToken(KindNumberLiteral, s[:i], i)
 	},
 
 	// Illegal
 	// Note: this one needs to be last, at it will always match and matchers are computed in order
 	func(s string) (bool, *Token) {
-		return true, NewToken(KindIllegal, s[0:1])
+		return true, NewToken(KindIllegal, s[0:1], 1)
 	},
 }

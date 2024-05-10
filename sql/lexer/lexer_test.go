@@ -12,7 +12,7 @@ func Test_NextToken(t *testing.T) {
 		want  []*Token
 	}{
 		{
-			given: "SELECT *\tfrom users;",
+			given: `SELECT *\tfrom users where name = "alif";`,
 			want: []*Token{
 				{
 					Kind:     KindSelect,
@@ -25,7 +25,7 @@ func Test_NextToken(t *testing.T) {
 					Position: 6,
 				},
 				{
-					Kind:     KindStar,
+					Kind:     KindIdentifier,
 					Value:    "*",
 					Position: 7,
 				},
