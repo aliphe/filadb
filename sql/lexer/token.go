@@ -106,11 +106,11 @@ var matchers = []Matcher{
 	},
 	// String literal
 	func(s string) (bool, *Token) {
-		if s[0] != '"' {
+		if s[0] != '\'' {
 			return false, nil
 		}
 		var i = 1
-		for ; i < len(s) && s[i] != '"'; i++ {
+		for ; i < len(s) && s[i] != '\''; i++ {
 		}
 		if i == len(s) {
 			return false, nil
