@@ -1,8 +1,10 @@
 package schema
 
+import "github.com/aliphe/filadb/db/storage"
+
 type Schema struct {
 	Table      string
-	Properties []*Property
+	Properties []Property
 }
 
 type Property struct {
@@ -27,4 +29,11 @@ const (
 type ReaderWriter struct {
 	Reader
 	Writer
+}
+
+func NewReaderWriter(rw storage.ReaderWriter) *ReaderWriter {
+	return &ReaderWriter{
+		Reader: *NewReader(rw),
+		Writer: *NewWriter(rw),
+	}
 }

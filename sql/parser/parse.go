@@ -6,6 +6,7 @@ import (
 	"io"
 
 	"github.com/aliphe/filadb/db/object"
+	"github.com/aliphe/filadb/db/schema"
 	"github.com/aliphe/filadb/sql/lexer"
 )
 
@@ -24,14 +25,21 @@ func (u UnexpectedTokenError) Error() string {
 type QueryType string
 
 const (
-	QueryTypeSelect QueryType = "select"
-	QueryTypeInsert QueryType = "insert"
+	QueryTypeSelect      QueryType = "select"
+	QueryTypeInsert      QueryType = "insert"
+	QueryTypeCreateTable QueryType = "create table"
 )
 
 type SQLQuery struct {
-	Type   QueryType
-	Select Select
-	Insert Insert
+	Type        QueryType
+	Select      Select
+	Insert      Insert
+	CreateTable CreateTable
+}
+
+type CreateTable struct {
+	Name    string
+	Columns []schema.Property
 }
 
 type Insert struct {
@@ -83,16 +91,26 @@ func Parse(tokens []*lexer.Token) (SQLQuery, error) {
 			return SQLQuery{}, err
 		}
 		out.Select = sel
-		expr = exp
 		out.Type = QueryTypeSelect
+		expr = exp
 	} else if cur[0].Kind == lexer.KindInsert {
 		ins, exp, err := parseInsert(expr)
 		if err != nil {
 			return SQLQuery{}, err
 		}
 		out.Insert = ins
-		expr = exp
 		out.Type = QueryTypeInsert
+		expr = exp
+	} else if cur[0].Kind == lexer.KindCreate {
+		create, exp, err := parseCreateTable(expr)
+		if err != nil {
+			return SQLQuery{}, err
+		}
+		out.CreateTable = create
+		out.Type = QueryTypeCreateTable
+		expr = exp
+	} else {
+		return SQLQuery{}, UnexpectedTokenError{cur[0]}
 	}
 	_, exp, err := expr.expectRead(1, lexer.KindSemiColumn)
 	if err != nil {
@@ -108,6 +126,28 @@ func Parse(tokens []*lexer.Token) (SQLQuery, error) {
 	}
 
 	return out, nil
+}
+
+func parseCreateTable(in *expr) (CreateTable, *expr, error) {
+	_, expr, err := in.expectRead(1, lexer.KindTable)
+	if err != nil {
+		return CreateTable{}, nil, err
+	}
+
+	cur, expr, err := expr.expectRead(1, lexer.KindLiteral)
+	if err != nil {
+		return CreateTable{}, nil, err
+	}
+	name := cur[0].Value
+
+	cols, expr, err := parseKeyValuePairs(expr)
+	if err != nil {
+		return CreateTable{}, nil, err
+	}
+	return CreateTable{
+		Name:    name,
+		Columns: cols,
+	}, expr, nil
 }
 
 func parseInsert(in *expr) (Insert, *expr, error) {
@@ -173,6 +213,44 @@ func parseCSV(in *expr) ([]interface{}, *expr, error) {
 		}
 	}
 	return row, expr, nil
+}
+
+func parseKeyValuePairs(in *expr) ([]schema.Property, *expr, error) {
+	_, expr, err := in.expectRead(1, lexer.KindOpenParen)
+	if err != nil {
+		return nil, nil, err
+	}
+	var out []schema.Property
+	for {
+		cur, exp, err := expr.read(3)
+		if err != nil {
+			return nil, nil, err
+		}
+		if cur[0].Kind != lexer.KindLiteral {
+			return nil, nil, UnexpectedTokenError{cur[0]}
+		}
+
+		expr = exp
+		prop := schema.Property{
+			Name: cur[0].Value,
+		}
+		if cur[1].Kind == lexer.KindText {
+			prop.Type = schema.PropertyTypeText
+		} else if cur[1].Kind == lexer.KindNumber {
+			prop.Type = schema.PropertyTypeNumber
+		} else {
+			return nil, nil, UnexpectedTokenError{cur[1]}
+		}
+		out = append(out, prop)
+
+		if cur[2].Kind == lexer.KindCloseParen {
+			break
+		}
+		if cur[2].Kind != lexer.KindComma {
+			return nil, nil, UnexpectedTokenError{cur[1]}
+		}
+	}
+	return out, expr, nil
 }
 
 func parseValues(in *expr, cols []string) ([]object.Row, *expr, error) {

@@ -6,6 +6,7 @@ import (
 
 	"github.com/aliphe/filadb/db"
 	"github.com/aliphe/filadb/db/object"
+	"github.com/aliphe/filadb/db/schema"
 	"github.com/aliphe/filadb/sql/parser"
 	"github.com/google/uuid"
 )
@@ -23,9 +24,26 @@ func New(client *db.Client) *Evaluator {
 func (e *Evaluator) EvalExpr(ctx context.Context, ast parser.SQLQuery) ([]object.Row, error) {
 	if ast.Type == parser.QueryTypeInsert {
 		return nil, e.evalInsert(ctx, ast.Insert)
-	} else {
+	} else if ast.Type == parser.QueryTypeSelect {
 		return e.evalSelect(ctx, ast.Select)
+	} else if ast.Type == parser.QueryTypeCreateTable {
+		return nil, e.evalCreateTable(ctx, ast.CreateTable)
+	} else {
+		return nil, fmt.Errorf("%s not implemented", ast.Type)
 	}
+}
+
+func (e *Evaluator) evalCreateTable(ctx context.Context, create parser.CreateTable) error {
+	sch := schema.Schema{
+		Table:      create.Name,
+		Properties: create.Columns,
+	}
+	sch.Properties = append(sch.Properties, schema.Property{
+		Name: "id",
+		Type: schema.PropertyTypeText,
+	})
+
+	return e.client.CreateSchema(ctx, sch)
 }
 
 func (e *Evaluator) evalSelect(ctx context.Context, sel parser.Select) ([]object.Row, error) {

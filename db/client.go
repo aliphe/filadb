@@ -10,14 +10,14 @@ import (
 )
 
 type Client struct {
-	schema *schema.Reader
+	schema *schema.ReaderWriter
 	store  storage.ReaderWriter
 }
 
 func NewClient(store storage.ReaderWriter) *Client {
 	return &Client{
 		store:  store,
-		schema: schema.NewReader(store),
+		schema: schema.NewReaderWriter(store),
 	}
 }
 
@@ -64,4 +64,8 @@ func (q *Client) Scan(ctx context.Context, table string) ([]object.Row, error) {
 	}
 
 	return s, nil
+}
+
+func (q *Client) CreateSchema(ctx context.Context, sch schema.Schema) error {
+	return q.schema.Create(ctx, &sch)
 }

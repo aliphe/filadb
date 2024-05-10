@@ -19,6 +19,12 @@ const (
 	KindFrom   Kind = "FROM"
 	KindWhere  Kind = "WHERE"
 	KindAnd    Kind = "AND"
+	KindCreate Kind = "CREATE"
+	KindTable  Kind = "TABLE"
+
+	// SQL types
+	KindNumber Kind = "NUMBER"
+	KindText   Kind = "TEXT"
 
 	// users, id, etc.
 	KindLiteral Kind = "LITERAL"
@@ -71,7 +77,7 @@ var matchers = []Matcher{
 			KindSemiColumn, KindQuote, KindDoubleQuote,
 			KindEqual, KindAbove, KindBelow,
 			KindInto, KindOpenParen, KindCloseParen,
-			KindValues,
+			KindValues, KindTable, KindCreate, KindText, KindNumber,
 		} {
 			_, ok := strings.CutPrefix(strings.ToLower(s), strings.ToLower(string(tok)))
 			if ok {
