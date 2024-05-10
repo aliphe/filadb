@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	ErrEndOfInput = errors.New("unexpexted end of input")
+	ErrEndOfInput = errors.New("unecpexted end of input")
 )
 
 type UnexpectedTokenError struct {
