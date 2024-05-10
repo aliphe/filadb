@@ -25,7 +25,7 @@ func Test_NextToken(t *testing.T) {
 					Position: 6,
 				},
 				{
-					Kind:     KindLiteral,
+					Kind:     KindStar,
 					Value:    "*",
 					Position: 7,
 				},
@@ -45,7 +45,7 @@ func Test_NextToken(t *testing.T) {
 					Position: 13,
 				},
 				{
-					Kind:     KindLiteral,
+					Kind:     KindIdentifier,
 					Value:    "users",
 					Position: 14,
 				},

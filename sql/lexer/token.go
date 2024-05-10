@@ -27,16 +27,15 @@ const (
 	KindText   Kind = "TEXT"
 
 	// users, id, etc.
-	KindLiteral Kind = "LITERAL"
+	KindIdentifier Kind = "IDENTIFIER"
 
-	KindNewLine     Kind = "\n"
-	KindComma       Kind = ","
-	KindSemiColumn  Kind = ";"
-	KindQuote       Kind = "'"
-	KindDoubleQuote Kind = "\""
-	KindEOF         Kind = ""
-	KindOpenParen   Kind = "("
-	KindCloseParen  Kind = ")"
+	KindStar       Kind = "*"
+	KindNewLine    Kind = "\n"
+	KindComma      Kind = ","
+	KindSemiColumn Kind = ";"
+	KindEOF        Kind = ""
+	KindOpenParen  Kind = "("
+	KindCloseParen Kind = ")"
 
 	KindEqual Kind = "="
 	KindAbove Kind = ">"
@@ -72,11 +71,8 @@ var matchers = []Matcher{
 	// String matchers
 	func(s string) (bool, *Token) {
 		for _, tok := range []Kind{
-			KindSelect, KindInsert, KindFrom,
-			KindWhere, KindAnd, KindComma,
-			KindSemiColumn, KindQuote, KindDoubleQuote,
-			KindEqual, KindAbove, KindBelow,
-			KindInto, KindOpenParen, KindCloseParen,
+			KindSelect, KindInsert, KindFrom, KindWhere, KindAnd, KindComma, KindSemiColumn, KindStar,
+			KindEqual, KindAbove, KindBelow, KindInto, KindOpenParen, KindCloseParen,
 			KindValues, KindTable, KindCreate, KindText, KindNumber,
 		} {
 			_, ok := strings.CutPrefix(strings.ToLower(s), strings.ToLower(string(tok)))
@@ -86,23 +82,41 @@ var matchers = []Matcher{
 		}
 		return false, nil
 	},
-	// Literal
+	// Identifier
 	func(s string) (bool, *Token) {
 		var match string
 		for _, c := range s {
 			if (c >= 'a' && c <= 'z') ||
 				(c >= 'A' && c <= 'Z') ||
 				(c >= '0' && c <= '9') ||
-				c == '_' || c == '*' {
+				c == '_' {
 				match += string(c)
 			} else {
 				break
 			}
 		}
 		if match != "" {
-			return true, NewToken(KindLiteral, match)
+			return true, NewToken(KindIdentifier, match)
 		}
 		return false, nil
+	},
+	// Text
+	func(s string) (bool, *Token) {
+		if s[0] != '"' {
+			return false, nil
+		}
+		var i = 1
+		for ; i < len(s) && s[i] != '"'; i++ {
+		}
+
+		return true, NewToken(KindText, s[:i])
+	},
+	// Number
+	func(s string) (bool, *Token) {
+		var i = 0
+		for ; i < len(s) && s[i] >= '0' && s[i] <= '9'; i++ {
+		}
+		return i > 0, NewToken(KindNumber, s[:i])
 	},
 
 	// Illegal

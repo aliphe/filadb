@@ -134,7 +134,7 @@ func parseCreateTable(in *expr) (CreateTable, *expr, error) {
 		return CreateTable{}, nil, err
 	}
 
-	cur, expr, err := expr.expectRead(1, lexer.KindLiteral)
+	cur, expr, err := expr.expectRead(1, lexer.KindIdentifier)
 	if err != nil {
 		return CreateTable{}, nil, err
 	}
@@ -151,7 +151,7 @@ func parseCreateTable(in *expr) (CreateTable, *expr, error) {
 }
 
 func parseInsert(in *expr) (Insert, *expr, error) {
-	cur, expr, err := in.expectRead(2, lexer.KindInto, lexer.KindLiteral)
+	cur, expr, err := in.expectRead(2, lexer.KindInto, lexer.KindIdentifier)
 	if err != nil {
 		return Insert{}, nil, fmt.Errorf("parse insert: %w", err)
 	}
@@ -226,7 +226,7 @@ func parseKeyValuePairs(in *expr) ([]schema.Property, *expr, error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		if cur[0].Kind != lexer.KindLiteral {
+		if cur[0].Kind != lexer.KindIdentifier {
 			return nil, nil, UnexpectedTokenError{cur[0]}
 		}
 
@@ -304,7 +304,7 @@ func parseSelect(in *expr) (Select, *expr, error) {
 }
 
 func parseFields(in *expr) ([]Field, *expr, error) {
-	cur, expr, err := in.expectRead(1, lexer.KindLiteral)
+	cur, expr, err := in.expectRead(1, lexer.KindIdentifier)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -318,7 +318,7 @@ func parseFields(in *expr) ([]Field, *expr, error) {
 	for {
 		cur, exp, err := expr.read(2)
 		if errors.Is(err, io.EOF) ||
-			cur[0].Kind != lexer.KindComma || cur[1].Kind != lexer.KindLiteral {
+			cur[0].Kind != lexer.KindComma || cur[1].Kind != lexer.KindIdentifier {
 			break
 		}
 
@@ -335,7 +335,7 @@ func parseFrom(in *expr) (From, *expr, error) {
 		return From{}, nil, err
 	}
 
-	cur, expr, err := expr.expectRead(1, lexer.KindLiteral)
+	cur, expr, err := expr.expectRead(1, lexer.KindIdentifier)
 	if err != nil {
 		return From{}, nil, err
 	}
@@ -386,10 +386,10 @@ func parseFilter(in *expr) (Filter, *expr, error) {
 	if err != nil {
 		return Filter{}, nil, err
 	}
-	if cur[0].Kind != lexer.KindLiteral {
+	if cur[0].Kind != lexer.KindIdentifier {
 		return Filter{}, nil, UnexpectedTokenError{cur[0]}
 	}
-	if cur[2].Kind != lexer.KindLiteral {
+	if cur[2].Kind != lexer.KindIdentifier {
 		return Filter{}, nil, UnexpectedTokenError{cur[2]}
 	}
 
