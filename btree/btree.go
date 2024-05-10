@@ -213,9 +213,27 @@ func (b *BTree[K]) findInNode(ctx context.Context, n *Node[K], k K) (*Node[K], e
 	return node, nil
 }
 
+func exists[K Key](keys []*KeyVal[K], refs []*Ref[K], key K) bool {
+	for _, k := range keys {
+		if k.Key == key {
+			return true
+		}
+	}
+	for _, r := range refs {
+		if r.From == &key || r.To == &key {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (b *BTree[K]) insert(ctx context.Context, n *Node[K], kv *KeyVal[K]) ([]*Ref[K], error) {
 	var keys []*KeyVal[K] = n.Keys()
 	var refs []*Ref[K] = n.Refs()
+	if exists(keys, refs, kv.Key) {
+		return nil, fmt.Errorf("key %v: %w", kv.Key, ErrDuplicate)
+	}
 
 	var movingUp []*Ref[K]
 	if !n.Leaf() {

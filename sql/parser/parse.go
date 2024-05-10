@@ -139,7 +139,7 @@ func Parse(tokens []*lexer.Token) (SQLQuery, error) {
 }
 
 func parseCreateTable(in *expr) (CreateTable, *expr, error) {
-	cur, expr, err := in.read(1, sequence(is(lexer.KindTable), is(lexer.KindIdentifier)))
+	cur, expr, err := in.read(2, sequence(is(lexer.KindTable), is(lexer.KindIdentifier)))
 	if err != nil {
 		return CreateTable{}, nil, err
 	}
