@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"log/slog"
 
 	"github.com/aliphe/filadb/btree"
 	"github.com/aliphe/filadb/btree/file"
@@ -33,9 +32,11 @@ func main() {
 	db := db.NewClient(btree)
 	q := sql.NewRunner(db)
 
-	handler := factory.NewHandler(q, handler.TypeRestAPI)
+	handler, err := factory.NewHandler(q, handler.TypeTCP)
+	if err != nil {
+		panic(err)
+	}
 
-	slog.Info("http server ready", slog.String("port", "3000"))
 	if err := handler.Listen(); err != nil {
 		panic(err)
 	}
