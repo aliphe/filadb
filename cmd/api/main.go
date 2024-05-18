@@ -4,7 +4,6 @@ import (
 	"flag"
 	"log/slog"
 	"net/http"
-	"os"
 
 	"github.com/aliphe/filadb/btree"
 	"github.com/aliphe/filadb/btree/file"
@@ -19,20 +18,16 @@ var (
 func main() {
 	flag.Parse()
 
-	err := os.MkdirAll(".db", os.ModePerm)
+	fileStore, err := file.New[string]()
 	if err != nil {
 		panic(err)
 	}
-
-	f, err := os.Open(".db")
-	if err != nil {
-		panic(err)
-	}
-	fileStore, err := file.New[string](f)
-	if err != nil {
-		panic(err)
-	}
-	btree := btree.New(500, fileStore)
+	defer func() {
+		if err := fileStore.Close(); err != nil {
+			panic(err)
+		}
+	}()
+	btree := btree.New(fileStore)
 
 	db := db.NewClient(btree)
 	r := router.Init(db, router.WithVersion(*version))

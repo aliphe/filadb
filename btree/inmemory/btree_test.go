@@ -21,7 +21,7 @@ func Test_Btree(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			b := btree.New(tc.order, New[int]())
+			b := btree.New(New[int]())
 
 			for _, a := range tc.given {
 				b.Add(context.Background(), "root", a, []byte(strconv.Itoa(a)))

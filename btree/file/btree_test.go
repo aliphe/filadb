@@ -2,7 +2,6 @@ package file
 
 import (
 	"context"
-	"os"
 	"strconv"
 	"testing"
 
@@ -20,24 +19,15 @@ func Test_Btree(t *testing.T) {
 		},
 	}
 
-	err := os.Mkdir(".db", os.ModePerm)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(".db")
-
-	f, err := os.Open(".db")
-	if err != nil {
-		t.Fatal(err)
-	}
-	b, err := New[int](f)
+	b, err := New[int]()
+	defer b.Close()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			b := btree.New(tc.order, b)
+			b := btree.New(b)
 
 			for _, a := range tc.given {
 				b.Add(context.Background(), "root", a, []byte(strconv.Itoa(a)))

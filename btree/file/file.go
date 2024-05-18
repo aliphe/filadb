@@ -11,22 +11,64 @@ import (
 	"github.com/aliphe/filadb/btree"
 )
 
+type options struct {
+	path string
+}
+
+type Option func(*options)
+
+func WithPath(path string) Option {
+	return func(o *options) {
+		o.path = path
+	}
+}
+
 type BtreeStore[K btree.Key] struct {
 	dir *os.File
 }
 
-func New[K btree.Key](file *os.File) (*BtreeStore[K], error) {
-	s, err := file.Stat()
-	if err != nil {
-		return nil, fmt.Errorf("retrieve file info: %w", err)
+func New[K btree.Key](opts ...Option) (*BtreeStore[K], error) {
+	opt := options{
+		path: ".db",
 	}
-	if !s.IsDir() {
-		return nil, fmt.Errorf("file %s: %w", file.Name(), ErrExpectedDirectory)
+	for _, o := range opts {
+		o(&opt)
+	}
+
+	file, err := initFS(opt.path)
+	if err != nil {
+		return nil, err
 	}
 
 	return &BtreeStore[K]{
 		dir: file,
 	}, nil
+}
+
+func (b *BtreeStore[K]) Close() error {
+	return b.dir.Close()
+}
+
+func initFS(path string) (*os.File, error) {
+	err := os.MkdirAll(path, os.ModePerm)
+	if err != nil {
+		return nil, fmt.Errorf("init FS: %w", err)
+	}
+
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("access FS: %w", err)
+	}
+
+	s, err := f.Stat()
+	if err != nil {
+		return nil, fmt.Errorf("retrieve file info: %w", err)
+	}
+	if !s.IsDir() {
+		return nil, fmt.Errorf("file %s: %w", f.Name(), ErrExpectedDirectory)
+	}
+
+	return f, nil
 }
 
 func (b *BtreeStore[K]) Save(ctx context.Context, n *btree.Node[K]) error {

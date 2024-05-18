@@ -35,9 +35,29 @@ type BTree[K Key] struct {
 	rootID NodeID
 }
 
-func New[K Key](order int, store nodeStore[K]) *BTree[K] {
+type options struct {
+	order int
+}
+
+type Option func(*options)
+
+func WithOrder(order int) Option {
+	return func(o *options) {
+		o.order = order
+	}
+}
+
+func New[K Key](store nodeStore[K], opts ...Option) *BTree[K] {
+	opt := options{
+		order: 500,
+	}
+
+	for _, o := range opts {
+		o(&opt)
+	}
+
 	btree := BTree[K]{
-		order: order,
+		order: opt.order,
 		store: store,
 	}
 
