@@ -126,7 +126,7 @@ var matchers = []Matcher{
 		for ; i < len(s) && s[i] >= '0' && s[i] <= '9'; i++ {
 		}
 		n, _ := strconv.Atoi(s[:i])
-		return i > 0, NewToken(KindNumberLiteral, n, i)
+		return i > 0, NewToken(KindNumberLiteral, int32(n), i)
 	},
 
 	// Illegal
