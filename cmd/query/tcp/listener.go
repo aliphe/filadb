@@ -3,6 +3,7 @@ package tcp
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -61,7 +62,9 @@ func (l *Listener) handleClient(conn net.Conn) {
 	for {
 		queries, err := readQueries(conn)
 		if err != nil {
-			fmt.Fprintf(conn, "handle query: %s", err)
+			if !errors.Is(err, io.EOF) {
+				fmt.Fprintf(conn, "handle query: %s", err)
+			}
 			return
 		}
 
