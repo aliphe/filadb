@@ -1,8 +1,6 @@
 package parser
 
-import (
-	"github.com/aliphe/filadb/sql/lexer"
-)
+import "github.com/aliphe/filadb/query/sql/lexer"
 
 type expr struct {
 	tokens []*lexer.Token

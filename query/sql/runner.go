@@ -6,9 +6,9 @@ import (
 
 	"github.com/aliphe/filadb/db"
 	"github.com/aliphe/filadb/db/object"
-	"github.com/aliphe/filadb/sql/eval"
-	"github.com/aliphe/filadb/sql/lexer"
-	"github.com/aliphe/filadb/sql/parser"
+	"github.com/aliphe/filadb/query/sql/eval"
+	"github.com/aliphe/filadb/query/sql/lexer"
+	"github.com/aliphe/filadb/query/sql/parser"
 )
 
 type Runner struct {

@@ -7,7 +7,7 @@ import (
 	"github.com/aliphe/filadb/db"
 	"github.com/aliphe/filadb/db/object"
 	"github.com/aliphe/filadb/db/schema"
-	"github.com/aliphe/filadb/sql/parser"
+	"github.com/aliphe/filadb/query/sql/parser"
 	"github.com/google/uuid"
 )
 

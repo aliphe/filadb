@@ -1,4 +1,4 @@
-package router
+package restapi
 
 import (
 	"errors"
@@ -7,12 +7,11 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/aliphe/filadb/db"
 	"github.com/aliphe/filadb/db/csv"
-	"github.com/aliphe/filadb/sql"
+	"github.com/aliphe/filadb/query"
 )
 
-func query(db *db.Client) http.HandlerFunc {
+func handle(q query.Runner) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -33,9 +32,7 @@ func query(db *db.Client) http.HandlerFunc {
 		query := string(body)
 		slog.InfoContext(ctx, query)
 
-		sql := sql.NewRunner(db)
-
-		res, err := sql.Run(ctx, query)
+		res, err := q.Run(ctx, query)
 		if err != nil {
 			fmt.Fprintf(w, "run sql query: %s", err)
 			w.WriteHeader(http.StatusInternalServerError)

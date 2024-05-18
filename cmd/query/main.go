@@ -3,12 +3,13 @@ package main
 import (
 	"flag"
 	"log/slog"
-	"net/http"
 
 	"github.com/aliphe/filadb/btree"
 	"github.com/aliphe/filadb/btree/file"
-	"github.com/aliphe/filadb/cmd/api/router"
+	"github.com/aliphe/filadb/cmd/query/factory"
+	"github.com/aliphe/filadb/cmd/query/handler"
 	"github.com/aliphe/filadb/db"
+	"github.com/aliphe/filadb/query/sql"
 )
 
 var (
@@ -30,10 +31,12 @@ func main() {
 	btree := btree.New(fileStore)
 
 	db := db.NewClient(btree)
-	r := router.Init(db, router.WithVersion(*version))
+	q := sql.NewRunner(db)
+
+	handler := factory.NewHandler(q, handler.TypeRestAPI)
 
 	slog.Info("http server ready", slog.String("port", "3000"))
-	if err := http.ListenAndServe(":3000", r); err != nil {
+	if err := handler.Listen(); err != nil {
 		panic(err)
 	}
 }

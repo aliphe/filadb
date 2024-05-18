@@ -7,7 +7,7 @@ import (
 
 	"github.com/aliphe/filadb/db/object"
 	"github.com/aliphe/filadb/db/schema"
-	"github.com/aliphe/filadb/sql/lexer"
+	"github.com/aliphe/filadb/query/sql/lexer"
 )
 
 var (
