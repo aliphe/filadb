@@ -9,7 +9,7 @@ func toSchema(s *Schema) string {
 		Type: "record",
 		Name: s.Table,
 	}
-	for _, p := range s.Properties {
+	for _, p := range s.Columns {
 		sch.Fields = append(sch.Fields, avroField{
 			Name: p.Name,
 			Type: avroTypeMapper[p.Type],
@@ -31,9 +31,9 @@ type avroField struct {
 	Type interface{} `json:"type"`
 }
 
-var avroTypeMapper = map[PropertyType]string{
-	PropertyTypeText:   string(fieldTypeString),
-	PropertyTypeNumber: string(fieldTypeNumber),
+var avroTypeMapper = map[ColumnType]string{
+	ColumnTypeText:   string(fieldTypeString),
+	ColumnTypeNumber: string(fieldTypeNumber),
 }
 
 type fieldType string

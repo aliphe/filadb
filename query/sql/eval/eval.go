@@ -55,12 +55,12 @@ func (e *Evaluator) evalUpdate(ctx context.Context, update parser.Update) error 
 
 func (e *Evaluator) evalCreateTable(ctx context.Context, create parser.CreateTable) error {
 	sch := schema.Schema{
-		Table:      create.Name,
-		Properties: create.Columns,
+		Table:   create.Name,
+		Columns: create.Columns,
 	}
-	sch.Properties = append(sch.Properties, schema.Property{
+	sch.Columns = append(sch.Columns, schema.Column{
 		Name: "id",
-		Type: schema.PropertyTypeText,
+		Type: schema.ColumnTypeText,
 	})
 
 	return e.client.CreateSchema(ctx, sch)

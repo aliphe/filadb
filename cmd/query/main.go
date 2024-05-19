@@ -8,6 +8,7 @@ import (
 	"github.com/aliphe/filadb/cmd/query/factory"
 	"github.com/aliphe/filadb/cmd/query/handler"
 	"github.com/aliphe/filadb/db"
+	"github.com/aliphe/filadb/db/schema"
 	"github.com/aliphe/filadb/query/sql"
 )
 
@@ -29,7 +30,12 @@ func main() {
 	}()
 	btree := btree.New(fileStore)
 
-	db := db.NewClient(btree)
+	schema, err := schema.NewAdmin(btree)
+	if err != nil {
+		panic(err)
+	}
+
+	db := db.NewClient(btree, schema)
 	q := sql.NewRunner(db)
 
 	handler, err := factory.NewHandler(q, handler.TypeTCP)

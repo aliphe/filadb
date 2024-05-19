@@ -1,110 +1,48 @@
 package schema
 
 import (
-	"bytes"
 	"context"
-	"encoding/gob"
-	"errors"
 	"fmt"
 
-	"github.com/aliphe/filadb/db/object"
 	"github.com/aliphe/filadb/db/storage"
 	"github.com/aliphe/filadb/pkg/avro"
 )
 
-var (
-	ErrSchemaNotFound = errors.New("schema not found")
-)
-
-type Reader struct {
-	reader storage.Reader
-}
-
-func NewReader(reader storage.Reader) *Reader {
-	return &Reader{
-		reader: reader,
-	}
-}
-
-func (r *Reader) Marshal(ctx context.Context, schema string, obj object.Row) ([]byte, error) {
-	s, ok, err := r.reader.Get(ctx, string(InternalTableSchemas), schema)
+func fromStorage(ctx context.Context, r storage.Reader, table string) (*Schema, error) {
+	t, ok, err := r.Get(ctx, string(InternalTableTables), table)
 	if err != nil {
-		return nil, fmt.Errorf("retrieve schema definition: %w", err)
+		return nil, fmt.Errorf("retrieve table information: %w", err)
 	}
 	if !ok {
-		return nil, ErrSchemaNotFound
+		return nil, ErrTableNotFound
 	}
 
-	dec := gob.NewDecoder(bytes.NewReader(s))
-
-	var sch Schema
-	err = dec.Decode(&sch)
+	b, err := avro.Unmarshal(toSchema(&internalTableTablesSchema), t)
 	if err != nil {
-		return nil, fmt.Errorf("decode schema: %w", err)
+		return nil, fmt.Errorf("unmarshal internal table schema: %w", err)
+	}
+	v, ok := b["version"].(int32)
+	if !ok {
+		return nil, fmt.Errorf("internal error")
 	}
 
-	b, err := avro.Marshal(toSchema(&sch), obj)
-	if err != nil {
-		return nil, fmt.Errorf("marshall data: %w", err)
+	out := Schema{
+		Table:   table,
+		version: v,
 	}
-
-	return b, nil
-}
-
-func (r *Reader) Unmarshal(ctx context.Context, schema string, b []byte) (object.Row, error) {
-	sch, err := r.schema(ctx, schema)
-	if err != nil {
-		return nil, err
-	}
-
-	out, err := avro.Unmarshal(sch, b)
-	if err != nil {
-		return nil, fmt.Errorf("marshall data: %w", err)
-	}
-
-	return out, nil
-}
-
-func (r *Reader) UnmarshalBatch(ctx context.Context, schema string, b [][]byte) ([]object.Row, error) {
-	sch, err := r.schema(ctx, schema)
-	if err != nil {
-		return nil, err
-	}
-
-	return r.unmarshalBatch(sch, b)
-}
-
-func (r *Reader) unmarshalBatch(schema string, b [][]byte) ([]object.Row, error) {
-	out := make([]object.Row, 0, len(b))
-
-	for _, r := range b {
-		o, err := avro.Unmarshal(schema, r)
+	cols, err := r.Scan(ctx, string(InternalTableColumns))
+	for _, c := range cols {
+		b, err := avro.Unmarshal(toSchema(&internalTableColumnsSchema), c)
 		if err != nil {
-			return nil, fmt.Errorf("marshall data: %w", err)
+			return nil, fmt.Errorf("unmarshal internal columns schema: %w", err)
 		}
-
-		out = append(out, o)
-	}
-	return out, nil
-
-}
-
-func (r *Reader) schema(ctx context.Context, schema string) (string, error) {
-	s, ok, err := r.reader.Get(ctx, string(InternalTableSchemas), schema)
-	if err != nil {
-		return "", fmt.Errorf("retrieve schema definition: %w", err)
-	}
-	if !ok {
-		return "", ErrSchemaNotFound
+		if b["table"] == table {
+			out.Columns = append(out.Columns, Column{
+				Name: b["column"].(string),
+				Type: b["type"].(ColumnType),
+			})
+		}
 	}
 
-	enc := gob.NewDecoder(bytes.NewReader(s))
-
-	var sch Schema
-	err = enc.Decode(&sch)
-	if err != nil {
-		return "", fmt.Errorf("decode schema: %w", err)
-	}
-
-	return toSchema(&sch), nil
+	return &out, nil
 }

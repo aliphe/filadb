@@ -46,7 +46,7 @@ type SQLQuery struct {
 
 type CreateTable struct {
 	Name    string
-	Columns []schema.Property
+	Columns []schema.Column
 }
 
 type Insert struct {
@@ -327,12 +327,12 @@ func parseRow(in *expr) (object.Row, *expr, error) {
 	return out, expr, nil
 }
 
-func parseKeyValuePairs(in *expr) ([]schema.Property, *expr, error) {
+func parseKeyValuePairs(in *expr) ([]schema.Column, *expr, error) {
 	_, expr, err := in.read(1, is(lexer.KindOpenParen))
 	if err != nil {
 		return nil, nil, err
 	}
-	var out []schema.Property
+	var out []schema.Column
 	for {
 		cur, exp, err := expr.read(3,
 			sequence(
@@ -349,13 +349,13 @@ func parseKeyValuePairs(in *expr) ([]schema.Property, *expr, error) {
 		if !ok {
 			return nil, nil, fmt.Errorf("invalid property name %v", cur[0].Value)
 		}
-		prop := schema.Property{
+		prop := schema.Column{
 			Name: propName,
 		}
 		if cur[1].Kind == lexer.KindText {
-			prop.Type = schema.PropertyTypeText
+			prop.Type = schema.ColumnTypeText
 		} else if cur[1].Kind == lexer.KindNumber {
-			prop.Type = schema.PropertyTypeNumber
+			prop.Type = schema.ColumnTypeNumber
 		} else {
 			return nil, nil, newUnexpectedTokenError(cur[1], lexer.KindText, lexer.KindNumber)
 		}

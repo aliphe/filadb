@@ -1,39 +1,58 @@
 package schema
 
-import "github.com/aliphe/filadb/db/storage"
-
 type Schema struct {
-	Table      string
-	Properties []Property
+	version int32
+	Table   string
+	Columns []Column
 }
 
-type Property struct {
+type Column struct {
 	Name string
-	Type PropertyType
+	Type ColumnType
 }
 
-type PropertyType string
+type ColumnType string
 
 const (
-	PropertyTypeText     PropertyType = "text"
-	PropertyTypeNumber   PropertyType = "number"
-	PropertyTypeDateTime PropertyType = "datetime"
+	ColumnTypeText   ColumnType = "text"
+	ColumnTypeNumber ColumnType = "number"
 )
 
 type InternalTable string
 
 const (
-	InternalTableSchemas InternalTable = "schemas"
+	InternalTableTables  InternalTable = "tables"
+	InternalTableColumns InternalTable = "columns"
 )
 
-type ReaderWriter struct {
-	Reader
-	Writer
+var internalTableTablesSchema = Schema{
+	Table: string(InternalTableColumns),
+	Columns: []Column{
+		{
+			Name: "table",
+			Type: ColumnTypeText,
+		},
+		{
+			Name: "version",
+			Type: ColumnTypeNumber,
+		},
+	},
 }
 
-func NewReaderWriter(rw storage.ReaderWriter) *ReaderWriter {
-	return &ReaderWriter{
-		Reader: *NewReader(rw),
-		Writer: *NewWriter(rw),
-	}
+var internalTableColumnsSchema = Schema{
+	Table: string(InternalTableColumns),
+	Columns: []Column{
+		{
+			Name: "table",
+			Type: ColumnTypeText,
+		},
+		{
+			Name: "column",
+			Type: ColumnTypeText,
+		},
+		{
+			Name: "type",
+			Type: ColumnTypeText,
+		},
+	},
 }
