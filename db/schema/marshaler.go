@@ -37,7 +37,7 @@ func (a *avroMarshaler) UnmarshalBatch(s [][]byte) ([]object.Row, error) {
 	for _, r := range s {
 		o, err := avro.Unmarshal(a.schema, r)
 		if err != nil {
-			return nil, fmt.Errorf("marshall data: %w", err)
+			return nil, fmt.Errorf("unmarshall data: %w", err)
 		}
 
 		out = append(out, o)

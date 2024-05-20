@@ -517,19 +517,12 @@ func parseWhere(in *expr) (*Where, *expr, error) {
 
 func parseFilter(in *expr) (Filter, *expr, error) {
 	cur, expr, err := in.read(3, sequence(
-		is(lexer.KindIdentifier),
-		oneOf(is(lexer.KindEqual)),
+		oneOf(is(lexer.KindIdentifier), is(lexer.KindStringLiteral)),
+		is(lexer.KindEqual),
 		oneOf(is(lexer.KindStringLiteral), is(lexer.KindNumberLiteral)),
 	))
 	if err != nil {
 		return Filter{}, nil, err
-	}
-	if cur[0].Kind != lexer.KindIdentifier {
-		return Filter{}, nil, newUnexpectedTokenError(cur[0], lexer.KindIdentifier)
-	}
-	if cur[2].Kind != lexer.KindStringLiteral &&
-		cur[2].Kind != lexer.KindNumberLiteral {
-		return Filter{}, nil, newUnexpectedTokenError(cur[2], lexer.KindStringLiteral, lexer.KindNumberLiteral)
 	}
 
 	var op Op

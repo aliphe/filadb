@@ -9,7 +9,7 @@ import (
 )
 
 func fromStorage(ctx context.Context, r storage.Reader, table string) (*Schema, error) {
-	t, ok, err := r.Get(ctx, string(InternalTableTables), table)
+	t, ok, err := r.Get(ctx, string(internalTableTables), table)
 	if err != nil {
 		return nil, fmt.Errorf("retrieve table information: %w", err)
 	}
@@ -30,7 +30,7 @@ func fromStorage(ctx context.Context, r storage.Reader, table string) (*Schema, 
 		Table:   table,
 		version: v,
 	}
-	cols, err := r.Scan(ctx, string(InternalTableColumns))
+	cols, err := r.Scan(ctx, string(internalTableColumns))
 	for _, c := range cols {
 		b, err := avro.Unmarshal(toSchema(&internalTableColumnsSchema), c)
 		if err != nil {
@@ -39,7 +39,7 @@ func fromStorage(ctx context.Context, r storage.Reader, table string) (*Schema, 
 		if b["table"] == table {
 			out.Columns = append(out.Columns, Column{
 				Name: b["column"].(string),
-				Type: b["type"].(ColumnType),
+				Type: columnTypeMapper[b["type"].(string)],
 			})
 		}
 	}

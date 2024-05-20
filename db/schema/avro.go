@@ -36,6 +36,11 @@ var avroTypeMapper = map[ColumnType]string{
 	ColumnTypeNumber: string(fieldTypeNumber),
 }
 
+var columnTypeMapper = map[string]ColumnType{
+	string(fieldTypeString): ColumnTypeText,
+	string(fieldTypeNumber): ColumnTypeNumber,
+}
+
 type fieldType string
 
 const (

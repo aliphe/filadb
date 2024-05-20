@@ -21,12 +21,12 @@ const (
 type InternalTable string
 
 const (
-	InternalTableTables  InternalTable = "tables"
-	InternalTableColumns InternalTable = "columns"
+	internalTableTables  InternalTable = "tables"
+	internalTableColumns InternalTable = "columns"
 )
 
 var internalTableTablesSchema = Schema{
-	Table: string(InternalTableColumns),
+	Table: string(internalTableTables),
 	Columns: []Column{
 		{
 			Name: "table",
@@ -40,7 +40,7 @@ var internalTableTablesSchema = Schema{
 }
 
 var internalTableColumnsSchema = Schema{
-	Table: string(InternalTableColumns),
+	Table: string(internalTableColumns),
 	Columns: []Column{
 		{
 			Name: "table",
