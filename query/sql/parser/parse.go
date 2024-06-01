@@ -45,12 +45,12 @@ type SQLQuery struct {
 }
 
 type CreateTable struct {
-	Name    string
+	Name    object.Table
 	Columns []schema.Column
 }
 
 type Insert struct {
-	Table string
+	Table object.Table
 	Rows  []object.Row
 }
 
@@ -73,7 +73,7 @@ type Field struct {
 }
 
 type From struct {
-	Table string
+	Table object.Table
 	Where *Where
 }
 
@@ -183,7 +183,7 @@ func parseUpdate(in *expr) (Update, *expr, error) {
 
 	return Update{
 		From: From{
-			Table: table,
+			Table: object.Table(table),
 			Where: where,
 		},
 		Set: set,
@@ -214,7 +214,7 @@ func parseCreateTable(in *expr) (CreateTable, *expr, error) {
 
 	name, ok := cur[1].Value.(string)
 	if !ok {
-		return CreateTable{}, nil, fmt.Errorf("invalid table name %v", cur[0].Value)
+		return CreateTable{}, nil, fmt.Errorf("invalid table name %v", cur[1].Value)
 	}
 
 	cols, expr, err := parseKeyValuePairs(expr)
@@ -222,7 +222,7 @@ func parseCreateTable(in *expr) (CreateTable, *expr, error) {
 		return CreateTable{}, nil, err
 	}
 	return CreateTable{
-		Name:    name,
+		Name:    object.Table(name),
 		Columns: cols,
 	}, expr, nil
 }
@@ -252,7 +252,7 @@ func parseInsert(in *expr) (Insert, *expr, error) {
 	}
 
 	return Insert{
-		Table: table,
+		Table: object.Table(table),
 		Rows:  values,
 	}, expr, nil
 }
@@ -480,7 +480,7 @@ func parseFrom(in *expr) (From, *expr, error) {
 	}
 
 	return From{
-		Table: table,
+		Table: object.Table(table),
 		Where: where,
 	}, expr, nil
 }

@@ -40,12 +40,16 @@ func (e *Evaluator) evalUpdate(ctx context.Context, update parser.Update) error 
 	if err != nil {
 		return fmt.Errorf("eval from: %w", err)
 	}
+	q, err := e.client.Acquire(update.From.Table)
+	if err != nil {
+		return err
+	}
 
 	for _, r := range rows {
 		for k, v := range update.Set.Update {
 			r[k] = v
 		}
-		if err := e.client.Update(ctx, update.From.Table, r["id"].(string), r); err != nil {
+		if err := q.Update(ctx, r["id"].(string), r); err != nil {
 			return fmt.Errorf("apply update for row %v: %w", r["id"], err)
 		}
 	}
@@ -58,12 +62,8 @@ func (e *Evaluator) evalCreateTable(ctx context.Context, create parser.CreateTab
 		Table:   create.Name,
 		Columns: create.Columns,
 	}
-	sch.Columns = append(sch.Columns, schema.Column{
-		Name: "id",
-		Type: schema.ColumnTypeText,
-	})
 
-	return e.client.CreateSchema(ctx, sch)
+	return e.client.CreateSchema(ctx, &sch)
 }
 
 func (e *Evaluator) evalSelect(ctx context.Context, sel parser.Select) ([]object.Row, error) {
@@ -95,15 +95,16 @@ func (e *Evaluator) evalSelect(ctx context.Context, sel parser.Select) ([]object
 }
 
 func (e *Evaluator) evalInsert(ctx context.Context, ins parser.Insert) error {
+	q, err := e.client.Acquire(ins.Table)
+	if err != nil {
+		return err
+	}
 	for _, r := range ins.Rows {
-		var id string
-		if r["id"] != nil {
-			id = r["id"].(string)
-		} else {
-			id = uuid.New().String()
-			r["id"] = id
+		if _, ok := r["id"]; !ok {
+			r["id"] = uuid.New().String()
 		}
-		err := e.client.Insert(ctx, ins.Table, id, r)
+
+		err := q.Insert(ctx, r)
 		if err != nil {
 			return err
 		}
@@ -112,9 +113,13 @@ func (e *Evaluator) evalInsert(ctx context.Context, ins parser.Insert) error {
 }
 
 func (e *Evaluator) evalFrom(ctx context.Context, from parser.From) ([]object.Row, error) {
+	q, err := e.client.Acquire(from.Table)
+	if err != nil {
+		return nil, err
+	}
 	id, hasId := idFilter(from.Where)
 	if hasId {
-		r, ok, err := e.client.Get(ctx, from.Table, id)
+		r, ok, err := q.Get(ctx, id)
 		if err != nil {
 			return nil, err
 		}
@@ -124,7 +129,7 @@ func (e *Evaluator) evalFrom(ctx context.Context, from parser.From) ([]object.Ro
 		return []object.Row{r}, nil
 	}
 
-	rows, err := e.client.Scan(ctx, from.Table)
+	rows, err := q.Scan(ctx)
 	if err != nil {
 		return nil, err
 	}

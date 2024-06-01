@@ -1,8 +1,12 @@
 package schema
 
+import (
+	"github.com/aliphe/filadb/db/object"
+)
+
 type Schema struct {
 	version int32
-	Table   string
+	Table   object.Table
 	Columns []Column
 }
 
@@ -18,16 +22,18 @@ const (
 	ColumnTypeNumber ColumnType = "number"
 )
 
-type InternalTable string
-
 const (
-	internalTableTables  InternalTable = "tables"
-	internalTableColumns InternalTable = "columns"
+	internalTableTables  object.Table = "tables"
+	internalTableColumns object.Table = "columns"
 )
 
 var internalTableTablesSchema = Schema{
-	Table: string(internalTableTables),
+	Table: internalTableTables,
 	Columns: []Column{
+		{
+			Name: "id",
+			Type: ColumnTypeText,
+		},
 		{
 			Name: "table",
 			Type: ColumnTypeText,
@@ -40,8 +46,12 @@ var internalTableTablesSchema = Schema{
 }
 
 var internalTableColumnsSchema = Schema{
-	Table: string(internalTableColumns),
+	Table: internalTableColumns,
 	Columns: []Column{
+		{
+			Name: "id",
+			Type: ColumnTypeText,
+		},
 		{
 			Name: "table",
 			Type: ColumnTypeText,

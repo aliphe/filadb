@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"strings"
+
+	"github.com/aliphe/filadb/db/storage"
 )
 
 func (b *BTree[K]) Print(node string) (string, error) {
@@ -12,7 +14,7 @@ func (b *BTree[K]) Print(node string) (string, error) {
 		return "", fmt.Errorf("acquire root: %w", err)
 	}
 	if !ok {
-		return "", ErrTreeCorrupted
+		return "", storage.ErrTableNotFound
 	}
 	out, err := b.printNode(root, 0)
 	if err != nil {

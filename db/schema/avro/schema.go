@@ -1,13 +1,15 @@
-package schema
+package avro
 
 import (
 	"encoding/json"
+
+	"github.com/aliphe/filadb/db/schema"
 )
 
-func toSchema(s *Schema) string {
+func toSchema(s *schema.Schema) string {
 	sch := avroSchema{
 		Type: "record",
-		Name: s.Table,
+		Name: string(s.Table),
 	}
 	for _, p := range s.Columns {
 		sch.Fields = append(sch.Fields, avroField{
@@ -31,14 +33,14 @@ type avroField struct {
 	Type interface{} `json:"type"`
 }
 
-var avroTypeMapper = map[ColumnType]string{
-	ColumnTypeText:   string(fieldTypeString),
-	ColumnTypeNumber: string(fieldTypeNumber),
+var avroTypeMapper = map[schema.ColumnType]string{
+	schema.ColumnTypeText:   string(fieldTypeString),
+	schema.ColumnTypeNumber: string(fieldTypeNumber),
 }
 
-var columnTypeMapper = map[string]ColumnType{
-	string(fieldTypeString): ColumnTypeText,
-	string(fieldTypeNumber): ColumnTypeNumber,
+var columnTypeMapper = map[string]schema.ColumnType{
+	string(fieldTypeString): schema.ColumnTypeText,
+	string(fieldTypeNumber): schema.ColumnTypeNumber,
 }
 
 type fieldType string

@@ -2,84 +2,58 @@ package db
 
 import (
 	"context"
-	"fmt"
 
+	"github.com/aliphe/filadb/db/errors"
 	"github.com/aliphe/filadb/db/object"
 	"github.com/aliphe/filadb/db/schema"
 	"github.com/aliphe/filadb/db/storage"
+	"github.com/aliphe/filadb/db/table"
 )
 
 type Client struct {
-	schema *schema.Admin
 	store  storage.ReaderWriter
+	tables map[object.Table]*table.Querier
+	schema *schema.Admin
 }
 
 func NewClient(store storage.ReaderWriter, schema *schema.Admin) *Client {
-	return &Client{
+	c := &Client{
 		store:  store,
 		schema: schema,
 	}
+
+	c.loadTables()
+
+	return c
 }
 
-func (q *Client) Insert(ctx context.Context, tab, id string, row object.Row) error {
-	b, err := q.schema.Marshal(ctx, tab, row)
-	if err != nil {
-		return fmt.Errorf("validate data: %w", err)
+func (c *Client) loadTables() {
+	schemas := c.schema.Marshalers()
+
+	tables := make(map[object.Table]*table.Querier, len(schemas)+2)
+	for t, s := range schemas {
+		tables[t] = table.NewQuerier(c.store, s, t)
 	}
 
-	err = q.store.Add(ctx, tab, id, b)
-	if err != nil {
-		return fmt.Errorf("insert data: %w", err)
-	}
-
-	return nil
+	c.tables = tables
 }
 
-func (q *Client) Update(ctx context.Context, tab, id string, row object.Row) error {
-	b, err := q.schema.Marshal(ctx, tab, row)
-	if err != nil {
-		return fmt.Errorf("validate data: %w", err)
-	}
-
-	err = q.store.Set(ctx, tab, id, b)
-	if err != nil {
-		return fmt.Errorf("insert data: %w", err)
-	}
-
-	return nil
-}
-
-func (q *Client) Get(ctx context.Context, table, id string) (object.Row, bool, error) {
-	d, ok, err := q.store.Get(ctx, table, id)
-	if err != nil {
-		return nil, false, err
-	}
+func (c *Client) Acquire(table object.Table) (*table.Querier, error) {
+	q, ok := c.tables[table]
 	if !ok {
-		return nil, false, nil
+		return nil, errors.ErrTableNotFound
 	}
 
-	s, err := q.schema.Unmarshal(ctx, table, d)
-	if err != nil {
-		return nil, true, fmt.Errorf("unmarshal row: %w", err)
-	}
-
-	return s, true, nil
+	return q, nil
 }
 
-func (q *Client) Scan(ctx context.Context, table string) ([]object.Row, error) {
-	d, err := q.store.Scan(ctx, table)
+func (c *Client) CreateSchema(ctx context.Context, sch *schema.Schema) error {
+	err := c.schema.Create(ctx, sch)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	s, err := q.schema.UnmarshalBatch(ctx, table, d)
-	if err != nil {
-		return nil, fmt.Errorf("unmarshal rows: %w", err)
-	}
+	c.loadTables()
 
-	return s, nil
-}
-
-func (q *Client) CreateSchema(ctx context.Context, sch schema.Schema) error {
-	return q.schema.Create(ctx, &sch)
+	return nil
 }

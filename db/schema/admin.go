@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/aliphe/filadb/btree"
 	"github.com/aliphe/filadb/db/object"
 	"github.com/aliphe/filadb/db/storage"
+	"github.com/aliphe/filadb/db/table"
 )
 
 var (
@@ -15,140 +15,76 @@ var (
 )
 
 type Admin struct {
-	rw                 storage.ReaderWriter
-	marshallers        map[string]*avroMarshaler
-	marshallerVersions map[string]int32
+	tables     *table.Querier
+	columns    *table.Querier
+	marshalers map[object.Table]Marshaler
+	factory    MarshalerFactory
 }
 
-func NewAdmin(rw storage.ReaderWriter) (*Admin, error) {
+func NewAdmin(store storage.ReaderWriter, factory MarshalerFactory) (*Admin, error) {
+	tables := table.NewQuerier(store, factory(&internalTableTablesSchema), internalTableTables)
+	columns := table.NewQuerier(store, factory(&internalTableColumnsSchema), internalTableColumns)
+
 	a := &Admin{
-		rw:                 rw,
-		marshallers:        make(map[string]*avroMarshaler),
-		marshallerVersions: make(map[string]int32),
+		tables:     tables,
+		columns:    columns,
+		marshalers: make(map[object.Table]Marshaler),
+		factory:    factory,
 	}
-	return a, a.init()
+
+	err := a.load()
+	if err != nil {
+		return nil, err
+	}
+	return a, nil
 }
 
-func (a *Admin) init() error {
-	_, ok, err := a.rw.Get(context.Background(), string(internalTableTables), string(internalTableTables))
-	if !ok || errors.Is(err, btree.ErrNodeNotFound) {
-		m := &avroMarshaler{toSchema(&internalTableTablesSchema)}
-
-		if err := a.createTable(context.Background(), m, string(internalTableTables)); err != nil {
-			return fmt.Errorf("create internal 'tables' table: %w", err)
-		}
-		if err := a.createTable(context.Background(), m, string(internalTableColumns)); err != nil {
-			return fmt.Errorf("create internal 'columns' table: %w", err)
-		}
-		a.marshallers[string(internalTableTables)] = m
-		a.marshallerVersions[string(internalTableTables)] = 1
+func (a *Admin) load() error {
+	s, err := a.tables.Scan(context.Background())
+	if err != nil && !errors.Is(err, storage.ErrTableNotFound) {
+		return err
 	}
 
-	b, err := a.rw.Scan(context.Background(), string(internalTableColumns))
-	if len(b) == 0 || errors.Is(err, btree.ErrNodeNotFound) {
-		m := &avroMarshaler{toSchema(&internalTableColumnsSchema)}
-		if err := a.createColumns(context.Background(), m, &internalTableTablesSchema); err != nil {
-			return fmt.Errorf("create internal 'tables' table columns: %w", err)
+	for _, t := range s {
+		table := t["table"].(string)
+		mar, err := a.fromStorage(context.Background(), object.Table(table))
+		if err != nil {
+			return err
 		}
-		if err := a.createColumns(context.Background(), m, &internalTableColumnsSchema); err != nil {
-			return fmt.Errorf("create internal 'columns' table columns: %w", err)
-		}
-		a.marshallers[string(internalTableColumns)] = m
-		a.marshallerVersions[string(internalTableColumns)] = 1
+		a.marshalers[object.Table(table)] = mar
 	}
+
+	a.marshalers[internalTableTables] = a.factory(&internalTableTablesSchema)
+	a.marshalers[internalTableColumns] = a.factory(&internalTableColumnsSchema)
 	return nil
 }
 
-func (a *Admin) marshaler(ctx context.Context, table string) (*avroMarshaler, error) {
-	sch, err := fromStorage(ctx, a.rw, table)
-	if err != nil {
-		return nil, fmt.Errorf("acquire table marshaler: %w", err)
-	}
-
-	if sch.version == a.marshallerVersions[table] {
-		return a.marshallers[table], nil
-	}
-
-	m, v, err := newMarshaler(ctx, a.rw, table)
-	if err != nil {
-		return nil, fmt.Errorf("acquire table marshaler: %w", err)
-	}
-	a.marshallers[table] = m
-	a.marshallerVersions[table] = v
-	return m, nil
-}
-
-func (a *Admin) Marshal(ctx context.Context, table string, obj object.Row) ([]byte, error) {
-	m, err := a.marshaler(ctx, table)
-	if err != nil {
-		return nil, err
-	}
-
-	b, err := m.Marshal(obj)
-	if err != nil {
-		return nil, fmt.Errorf("marshal data: %w", err)
-	}
-
-	return b, nil
-}
-
-func (a *Admin) Unmarshal(ctx context.Context, table string, b []byte) (object.Row, error) {
-	m, err := a.marshaler(ctx, table)
-	if err != nil {
-		return nil, err
-	}
-
-	out, err := m.Unmarshal(b)
-	if err != nil {
-		return nil, fmt.Errorf("unmarshal data: %w", err)
-	}
-
-	return out, nil
-}
-
-func (a *Admin) UnmarshalBatch(ctx context.Context, table string, s [][]byte) ([]object.Row, error) {
-	m, err := a.marshaler(ctx, table)
-	if err != nil {
-		return nil, err
-	}
-
-	out, err := m.UnmarshalBatch(s)
-	if err != nil {
-		return nil, fmt.Errorf("unmarshal data: %w", err)
-	}
-
-	return out, nil
+func (a *Admin) Marshalers() map[object.Table]Marshaler {
+	return a.marshalers
 }
 
 func (a *Admin) Create(ctx context.Context, schema *Schema) error {
-	m, err := a.marshaler(ctx, string(internalTableTables))
-	if err != nil {
-		return err
-	}
-	err = a.createTable(ctx, m, schema.Table)
+	err := a.createTable(ctx, schema.Table)
 	if err != nil {
 		return err
 	}
 
-	m, err = a.marshaler(ctx, string(internalTableColumns))
+	err = a.createColumns(ctx, schema.Table, schema.Columns)
 	if err != nil {
 		return err
 	}
-	err = a.createColumns(ctx, m, schema)
+
+	a.marshalers[schema.Table] = a.factory(schema)
 
 	return nil
 }
 
-func (a *Admin) createTable(ctx context.Context, m *avroMarshaler, table string) error {
-	b, err := m.Marshal(object.Row{
-		"table":   table,
+func (a *Admin) createTable(ctx context.Context, table object.Table) error {
+	err := a.tables.Insert(ctx, object.Row{
+		"id":      string(table),
+		"table":   string(table),
 		"version": 1,
 	})
-	if err != nil {
-		return fmt.Errorf("encode schema: %w", err)
-	}
-
-	err = a.rw.Add(ctx, string(internalTableTables), table, b)
 	if err != nil {
 		return fmt.Errorf("save schema: %w", err)
 	}
@@ -156,17 +92,15 @@ func (a *Admin) createTable(ctx context.Context, m *avroMarshaler, table string)
 	return nil
 }
 
-func (a *Admin) createColumns(ctx context.Context, m *avroMarshaler, schema *Schema) error {
-	for _, col := range schema.Columns {
-		b, err := m.Marshal(object.Row{
-			"table":  schema.Table,
+func (a *Admin) createColumns(ctx context.Context, table object.Table, cols []Column) error {
+	for _, col := range cols {
+		row := object.Row{
+			"id":     string(table) + col.Name,
+			"table":  string(table),
 			"column": col.Name,
-			"type":   avroTypeMapper[col.Type],
-		})
-		if err != nil {
-			return fmt.Errorf("marshal column %s: %w", col.Name, err)
+			"type":   string(col.Type),
 		}
-		err = a.rw.Add(ctx, string(internalTableColumns), schema.Table+"."+col.Name, b)
+		err := a.columns.Insert(ctx, row)
 		if err != nil {
 			return fmt.Errorf("save column %s: %w", col.Name, err)
 		}

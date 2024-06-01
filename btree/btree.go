@@ -5,6 +5,8 @@ import (
 	"context"
 	"fmt"
 	"slices"
+
+	"github.com/aliphe/filadb/db/storage"
 )
 
 type Key interface {
@@ -133,7 +135,7 @@ func (b *BTree[K]) set(ctx context.Context, node string, key K, val []byte, upda
 		Val: val,
 	}, update)
 	if err != nil {
-		return fmt.Errorf("insert key: %w", err)
+		return err
 	}
 
 	if newRoot != nil {
@@ -150,7 +152,7 @@ func (b *BTree[K]) Get(ctx context.Context, node string, key K) ([]byte, bool, e
 		return nil, false, fmt.Errorf("acquire root: %w", err)
 	}
 	if !ok {
-		return nil, false, ErrNodeNotFound
+		return nil, false, storage.ErrTableNotFound
 	}
 
 	kv, ok, err := b.get(ctx, root, key)
@@ -169,7 +171,7 @@ func (b *BTree[K]) Scan(ctx context.Context, node string) ([][]byte, error) {
 		return nil, fmt.Errorf("acquire root: %w", err)
 	}
 	if !ok {
-		return nil, ErrNodeNotFound
+		return nil, storage.ErrTableNotFound
 	}
 
 	return b.dump(ctx, root)
@@ -185,7 +187,7 @@ func (b *BTree[K]) dump(ctx context.Context, n *Node[K]) ([][]byte, error) {
 				return nil, err
 			}
 			if !ok {
-				return nil, ErrNodeNotFound
+				return nil, storage.ErrTableNotFound
 			}
 
 			b, err := b.dump(ctx, c)
@@ -236,7 +238,7 @@ func (b *BTree[K]) findInNode(ctx context.Context, n *Node[K], k K) (*Node[K], e
 		return nil, fmt.Errorf("following node ref: %w", err)
 	}
 	if !ok {
-		return nil, fmt.Errorf("%w: %w", ErrTreeCorrupted, err)
+		return nil, fmt.Errorf("%w: %w", storage.ErrTableNotFound, err)
 	}
 
 	return node, nil
@@ -261,7 +263,7 @@ func (b *BTree[K]) insert(ctx context.Context, n *Node[K], kv *KeyVal[K], update
 	var keys []*KeyVal[K] = n.Keys()
 	var refs []*Ref[K] = n.Refs()
 	if !update && exists(keys, refs, kv.Key) {
-		return nil, fmt.Errorf("key %v: %w", kv.Key, ErrDuplicate)
+		return nil, fmt.Errorf("key %v: %w", kv.Key, storage.ErrDuplicate)
 	}
 
 	var movingUp []*Ref[K]
