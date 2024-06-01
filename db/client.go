@@ -13,10 +13,10 @@ import (
 type Client struct {
 	store  storage.ReaderWriter
 	tables map[object.Table]*table.Querier
-	schema *schema.Admin
+	schema *schema.Registry
 }
 
-func NewClient(store storage.ReaderWriter, schema *schema.Admin) *Client {
+func NewClient(store storage.ReaderWriter, schema *schema.Registry) *Client {
 	c := &Client{
 		store:  store,
 		schema: schema,

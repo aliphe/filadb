@@ -7,7 +7,7 @@ import (
 	"github.com/aliphe/filadb/db/object"
 )
 
-func (a *Admin) fromStorage(ctx context.Context, table object.Table) (Marshaler, error) {
+func (a *Registry) fromStorage(ctx context.Context, table object.Table) (Marshaler, error) {
 	t, ok, err := a.tables.Get(ctx, string(table))
 	if err != nil {
 		return nil, fmt.Errorf("retrieve table information: %w", err)

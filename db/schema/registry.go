@@ -14,18 +14,18 @@ var (
 	ErrTableNotFound = errors.New("schema not found")
 )
 
-type Admin struct {
+type Registry struct {
 	tables     *table.Querier
 	columns    *table.Querier
 	marshalers map[object.Table]Marshaler
 	factory    MarshalerFactory
 }
 
-func NewAdmin(store storage.ReaderWriter, factory MarshalerFactory) (*Admin, error) {
+func NewAdmin(store storage.ReaderWriter, factory MarshalerFactory) (*Registry, error) {
 	tables := table.NewQuerier(store, factory(&internalTableTablesSchema), internalTableTables)
 	columns := table.NewQuerier(store, factory(&internalTableColumnsSchema), internalTableColumns)
 
-	a := &Admin{
+	a := &Registry{
 		tables:     tables,
 		columns:    columns,
 		marshalers: make(map[object.Table]Marshaler),
@@ -39,7 +39,7 @@ func NewAdmin(store storage.ReaderWriter, factory MarshalerFactory) (*Admin, err
 	return a, nil
 }
 
-func (a *Admin) load() error {
+func (a *Registry) load() error {
 	s, err := a.tables.Scan(context.Background())
 	if err != nil && !errors.Is(err, storage.ErrTableNotFound) {
 		return err
@@ -59,11 +59,11 @@ func (a *Admin) load() error {
 	return nil
 }
 
-func (a *Admin) Marshalers() map[object.Table]Marshaler {
+func (a *Registry) Marshalers() map[object.Table]Marshaler {
 	return a.marshalers
 }
 
-func (a *Admin) Create(ctx context.Context, schema *Schema) error {
+func (a *Registry) Create(ctx context.Context, schema *Schema) error {
 	err := a.createTable(ctx, schema.Table)
 	if err != nil {
 		return err
@@ -79,7 +79,7 @@ func (a *Admin) Create(ctx context.Context, schema *Schema) error {
 	return nil
 }
 
-func (a *Admin) createTable(ctx context.Context, table object.Table) error {
+func (a *Registry) createTable(ctx context.Context, table object.Table) error {
 	err := a.tables.Insert(ctx, object.Row{
 		"id":      string(table),
 		"table":   string(table),
@@ -92,7 +92,7 @@ func (a *Admin) createTable(ctx context.Context, table object.Table) error {
 	return nil
 }
 
-func (a *Admin) createColumns(ctx context.Context, table object.Table, cols []Column) error {
+func (a *Registry) createColumns(ctx context.Context, table object.Table, cols []Column) error {
 	for _, col := range cols {
 		row := object.Row{
 			"id":     string(table) + col.Name,
