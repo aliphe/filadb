@@ -1,4 +1,4 @@
-package schema
+package registry
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/aliphe/filadb/db/object"
+	"github.com/aliphe/filadb/db/schema"
 	"github.com/aliphe/filadb/db/storage"
 	"github.com/aliphe/filadb/db/table"
 )
@@ -17,18 +18,18 @@ var (
 type Registry struct {
 	tables     *table.Querier
 	columns    *table.Querier
-	marshalers map[object.Table]Marshaler
-	factory    MarshalerFactory
+	marshalers map[object.Table]schema.Marshaler
+	factory    schema.MarshalerFactory
 }
 
-func NewAdmin(store storage.ReaderWriter, factory MarshalerFactory) (*Registry, error) {
+func New(store storage.ReaderWriter, factory schema.MarshalerFactory) (*Registry, error) {
 	tables := table.NewQuerier(store, factory(&internalTableTablesSchema), internalTableTables)
 	columns := table.NewQuerier(store, factory(&internalTableColumnsSchema), internalTableColumns)
 
 	a := &Registry{
 		tables:     tables,
 		columns:    columns,
-		marshalers: make(map[object.Table]Marshaler),
+		marshalers: make(map[object.Table]schema.Marshaler),
 		factory:    factory,
 	}
 
@@ -59,11 +60,11 @@ func (a *Registry) load() error {
 	return nil
 }
 
-func (a *Registry) Marshalers() map[object.Table]Marshaler {
+func (a *Registry) Marshalers() map[object.Table]schema.Marshaler {
 	return a.marshalers
 }
 
-func (a *Registry) Create(ctx context.Context, schema *Schema) error {
+func (a *Registry) Create(ctx context.Context, schema *schema.Schema) error {
 	err := a.createTable(ctx, schema.Table)
 	if err != nil {
 		return err
@@ -92,7 +93,7 @@ func (a *Registry) createTable(ctx context.Context, table object.Table) error {
 	return nil
 }
 
-func (a *Registry) createColumns(ctx context.Context, table object.Table, cols []Column) error {
+func (a *Registry) createColumns(ctx context.Context, table object.Table, cols []schema.Column) error {
 	for _, col := range cols {
 		row := object.Row{
 			"id":     string(table) + col.Name,

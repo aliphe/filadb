@@ -4,19 +4,30 @@ import (
 	"context"
 
 	"github.com/aliphe/filadb/db/errors"
+	"github.com/aliphe/filadb/db/index"
 	"github.com/aliphe/filadb/db/object"
 	"github.com/aliphe/filadb/db/schema"
 	"github.com/aliphe/filadb/db/storage"
 	"github.com/aliphe/filadb/db/table"
 )
 
+type schemaRegistry interface {
+	Create(ctx context.Context, schema *schema.Schema) error
+	Marshalers() map[object.Table]schema.Marshaler
+}
+
+type indexRegistry interface {
+	Create(ctx context.Context, def index.Definition) error
+	Seek(ctx context.Context, filter object.Row) string
+}
+
 type Client struct {
 	store  storage.ReaderWriter
 	tables map[object.Table]*table.Querier
-	schema *schema.Registry
+	schema schemaRegistry
 }
 
-func NewClient(store storage.ReaderWriter, schema *schema.Registry) *Client {
+func NewClient(store storage.ReaderWriter, schema schemaRegistry) *Client {
 	c := &Client{
 		store:  store,
 		schema: schema,

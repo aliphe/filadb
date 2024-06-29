@@ -13,8 +13,8 @@ type marshaler interface {
 	UnmarshalBatch(b [][]byte) ([]object.Row, error)
 }
 
-func (q *Querier) Get(ctx context.Context, id string) (object.Row, bool, error) {
-	d, ok, err := q.store.Get(ctx, string(q.table), id)
+func (q *Querier) Get(ctx context.Context, id object.ID) (object.Row, bool, error) {
+	d, ok, err := q.store.Get(ctx, string(q.table), string(id))
 	if err != nil {
 		return nil, false, err
 	}

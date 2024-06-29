@@ -141,11 +141,11 @@ func (e *Evaluator) evalFrom(ctx context.Context, from parser.From) ([]object.Ro
 	return rows, nil
 }
 
-func idFilter(where *parser.Where) (string, bool) {
+func idFilter(where *parser.Where) (object.ID, bool) {
 	if where != nil {
 		for _, f := range where.Filters {
 			if f.Column == "id" && f.Op == parser.OpEqual {
-				return f.Value.(string), true
+				return f.Value.(object.ID), true
 			}
 		}
 	}

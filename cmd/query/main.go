@@ -8,8 +8,8 @@ import (
 	"github.com/aliphe/filadb/cmd/query/factory"
 	"github.com/aliphe/filadb/cmd/query/handler"
 	"github.com/aliphe/filadb/db"
-	"github.com/aliphe/filadb/db/schema"
 	"github.com/aliphe/filadb/db/schema/avro"
+	"github.com/aliphe/filadb/db/schema/registry"
 	"github.com/aliphe/filadb/query/sql"
 )
 
@@ -31,7 +31,7 @@ func main() {
 	}()
 	btree := btree.New(fileStore)
 
-	schema, err := schema.NewAdmin(btree, avro.NewMarshaler)
+	schema, err := registry.New(btree, avro.NewMarshaler)
 	if err != nil {
 		panic(err)
 	}
