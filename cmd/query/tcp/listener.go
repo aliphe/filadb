@@ -92,7 +92,7 @@ func (l *Listener) handleRequest(q string) ([]byte, error) {
 
 	res, err := l.q.Run(ctx, string(q))
 	if err != nil {
-		return []byte(fmt.Sprintf("run sql query: %s", err)), nil
+		return []byte(fmt.Sprintf("run sql query: %s\n", err)), nil
 	}
 
 	if len(res) == 0 {

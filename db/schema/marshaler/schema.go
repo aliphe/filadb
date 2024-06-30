@@ -1,4 +1,4 @@
-package avro
+package marshaler
 
 import (
 	"encoding/json"

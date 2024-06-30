@@ -6,12 +6,26 @@ import (
 )
 
 const (
-	internalTableTables  object.Table = "tables"
-	internalTableColumns object.Table = "columns"
+	internalTableTablesName  = "tables"
+	internalTableColumnsName = "columns"
 )
 
-var internalTableTablesSchema = schema.Schema{
-	Table: internalTableTables,
+type internalTableTables struct {
+	ID      object.ID
+	Table   object.Table
+	Version int
+}
+
+func (i internalTableTables) ObjectID() object.ID {
+	return i.ID
+}
+
+func (i internalTableTables) ObjectTable() object.Table {
+	return internalTableTablesName
+}
+
+var internalTableTablesSchema = &schema.Schema{
+	Table: internalTableTablesName,
 	Columns: []schema.Column{
 		{
 			Name: "id",
@@ -28,8 +42,22 @@ var internalTableTablesSchema = schema.Schema{
 	},
 }
 
-var internalTableColumnsSchema = schema.Schema{
-	Table: internalTableColumns,
+type internalTableColumns struct {
+	ID     object.ID
+	Table  object.Table
+	Column string
+	Type   string
+}
+
+func (i internalTableColumns) ObjectID() object.ID {
+	return i.ID
+}
+func (i internalTableColumns) ObjectTable() object.Table {
+	return internalTableColumnsName
+}
+
+var internalTableColumnsSchema = &schema.Schema{
+	Table: internalTableColumnsName,
 	Columns: []schema.Column{
 		{
 			Name: "id",

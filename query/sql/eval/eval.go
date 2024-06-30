@@ -49,7 +49,7 @@ func (e *Evaluator) evalUpdate(ctx context.Context, update parser.Update) error 
 		for k, v := range update.Set.Update {
 			r[k] = v
 		}
-		if err := q.Update(ctx, r["id"].(string), r); err != nil {
+		if err := q.Update(ctx, r); err != nil {
 			return fmt.Errorf("apply update for row %v: %w", r["id"], err)
 		}
 	}
@@ -119,17 +119,19 @@ func (e *Evaluator) evalFrom(ctx context.Context, from parser.From) ([]object.Ro
 	}
 	id, hasId := idFilter(from.Where)
 	if hasId {
-		r, ok, err := q.Get(ctx, id)
+		var row object.Row
+		ok, err := q.Get(ctx, id, &row)
 		if err != nil {
 			return nil, err
 		}
 		if !ok {
 			return nil, nil
 		}
-		return []object.Row{r}, nil
+		return []object.Row{row}, nil
 	}
 
-	rows, err := q.Scan(ctx)
+	var rows []object.Row
+	err = q.Scan(ctx, &rows)
 	if err != nil {
 		return nil, err
 	}
@@ -145,7 +147,10 @@ func idFilter(where *parser.Where) (object.ID, bool) {
 	if where != nil {
 		for _, f := range where.Filters {
 			if f.Column == "id" && f.Op == parser.OpEqual {
-				return f.Value.(object.ID), true
+				v, ok := f.Value.(string)
+				if ok {
+					return object.ID(v), true
+				}
 			}
 		}
 	}

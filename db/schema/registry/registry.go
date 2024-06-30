@@ -12,55 +12,55 @@ import (
 )
 
 var (
-	ErrTableNotFound = errors.New("schema not found")
+	ErrTableNotFound = errors.New("table not found")
 )
 
 type Registry struct {
-	tables     *table.Querier
-	columns    *table.Querier
-	marshalers map[object.Table]schema.Marshaler
+	tables     *table.Querier[internalTableTables]
+	columns    *table.Querier[internalTableColumns]
+	marshalers map[object.Table]object.Marshaler
 	factory    schema.MarshalerFactory
 }
 
 func New(store storage.ReaderWriter, factory schema.MarshalerFactory) (*Registry, error) {
-	tables := table.NewQuerier(store, factory(&internalTableTablesSchema), internalTableTables)
-	columns := table.NewQuerier(store, factory(&internalTableColumnsSchema), internalTableColumns)
+	tables := table.NewQuerier[internalTableTables](store, factory(internalTableTablesSchema), internalTableTablesName)
+	columns := table.NewQuerier[internalTableColumns](store, factory(internalTableColumnsSchema), internalTableColumnsName)
 
 	a := &Registry{
 		tables:     tables,
 		columns:    columns,
-		marshalers: make(map[object.Table]schema.Marshaler),
+		marshalers: make(map[object.Table]object.Marshaler),
 		factory:    factory,
 	}
 
 	err := a.load()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("init schema registry: %w", err)
 	}
 	return a, nil
 }
 
 func (a *Registry) load() error {
-	s, err := a.tables.Scan(context.Background())
+	s := make([]internalTableTables, 0)
+	err := a.tables.Scan(context.Background(), &s)
 	if err != nil && !errors.Is(err, storage.ErrTableNotFound) {
 		return err
 	}
 
 	for _, t := range s {
-		table := t["table"].(string)
-		mar, err := a.fromStorage(context.Background(), object.Table(table))
+		mar, err := a.fromStorage(context.Background(), object.Table(t.Table))
 		if err != nil {
 			return err
 		}
-		a.marshalers[object.Table(table)] = mar
+		a.marshalers[t.ObjectTable()] = mar
 	}
 
-	a.marshalers[internalTableTables] = a.factory(&internalTableTablesSchema)
-	a.marshalers[internalTableColumns] = a.factory(&internalTableColumnsSchema)
+	a.marshalers["tables"] = a.factory(internalTableTablesSchema)
+	a.marshalers["columns"] = a.factory(internalTableColumnsSchema)
 	return nil
 }
 
-func (a *Registry) Marshalers() map[object.Table]schema.Marshaler {
+func (a *Registry) Marshalers() map[object.Table]object.Marshaler {
 	return a.marshalers
 }
 
@@ -81,10 +81,10 @@ func (a *Registry) Create(ctx context.Context, schema *schema.Schema) error {
 }
 
 func (a *Registry) createTable(ctx context.Context, table object.Table) error {
-	err := a.tables.Insert(ctx, object.Row{
-		"id":      string(table),
-		"table":   string(table),
-		"version": 1,
+	err := a.tables.Insert(ctx, internalTableTables{
+		ID:      object.ID(table),
+		Table:   table,
+		Version: 1,
 	})
 	if err != nil {
 		return fmt.Errorf("save schema: %w", err)
@@ -95,11 +95,11 @@ func (a *Registry) createTable(ctx context.Context, table object.Table) error {
 
 func (a *Registry) createColumns(ctx context.Context, table object.Table, cols []schema.Column) error {
 	for _, col := range cols {
-		row := object.Row{
-			"id":     string(table) + col.Name,
-			"table":  string(table),
-			"column": col.Name,
-			"type":   string(col.Type),
+		row := internalTableColumns{
+			ID:     object.ID(table) + object.ID(col.Name),
+			Table:  table,
+			Column: col.Name,
+			Type:   string(col.Type),
 		}
 		err := a.columns.Insert(ctx, row)
 		if err != nil {

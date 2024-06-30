@@ -4,6 +4,8 @@ import (
 	"github.com/aliphe/filadb/db/object"
 )
 
+type MarshalerFactory func(*Schema) object.Marshaler
+
 type Schema struct {
 	Table   object.Table
 	Columns []Column
