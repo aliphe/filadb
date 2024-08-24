@@ -40,7 +40,7 @@ func (e *Evaluator) evalUpdate(ctx context.Context, update parser.Update) error 
 	if err != nil {
 		return fmt.Errorf("eval from: %w", err)
 	}
-	q, err := e.client.Acquire(update.From.Table)
+	q, err := e.client.Acquire(ctx, update.From.Table)
 	if err != nil {
 		return err
 	}
@@ -95,7 +95,7 @@ func (e *Evaluator) evalSelect(ctx context.Context, sel parser.Select) ([]object
 }
 
 func (e *Evaluator) evalInsert(ctx context.Context, ins parser.Insert) error {
-	q, err := e.client.Acquire(ins.Table)
+	q, err := e.client.Acquire(ctx, ins.Table)
 	if err != nil {
 		return err
 	}
@@ -113,7 +113,7 @@ func (e *Evaluator) evalInsert(ctx context.Context, ins parser.Insert) error {
 }
 
 func (e *Evaluator) evalFrom(ctx context.Context, from parser.From) ([]object.Row, error) {
-	q, err := e.client.Acquire(from.Table)
+	q, err := e.client.Acquire(ctx, from.Table)
 	if err != nil {
 		return nil, err
 	}

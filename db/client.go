@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 
-	"github.com/aliphe/filadb/db/errors"
 	"github.com/aliphe/filadb/db/object"
 	"github.com/aliphe/filadb/db/schema"
 	"github.com/aliphe/filadb/db/storage"
@@ -12,12 +11,11 @@ import (
 
 type schemaRegistry interface {
 	Create(ctx context.Context, schema *schema.Schema) error
-	Marshalers() map[object.Table]object.Marshaler
+	Querier(ctx context.Context, table object.Table) (*table.Querier[object.Row], error)
 }
 
 type Client struct {
 	store  storage.ReaderWriter
-	tables map[object.Table]*table.Querier[object.Row]
 	schema schemaRegistry
 }
 
@@ -27,26 +25,13 @@ func NewClient(store storage.ReaderWriter, schema schemaRegistry) *Client {
 		schema: schema,
 	}
 
-	c.loadTables()
-
 	return c
 }
 
-func (c *Client) loadTables() {
-	schemas := c.schema.Marshalers()
-
-	tables := make(map[object.Table]*table.Querier[object.Row], len(schemas))
-	for t, s := range schemas {
-		tables[t] = table.NewQuerier[object.Row](c.store, s, t)
-	}
-
-	c.tables = tables
-}
-
-func (c *Client) Acquire(table object.Table) (*table.Querier[object.Row], error) {
-	q, ok := c.tables[table]
-	if !ok {
-		return nil, errors.ErrTableNotFound
+func (c *Client) Acquire(ctx context.Context, table object.Table) (*table.Querier[object.Row], error) {
+	q, err := c.schema.Querier(ctx, table)
+	if err != nil {
+		return nil, err
 	}
 
 	return q, nil
@@ -57,8 +42,6 @@ func (c *Client) CreateSchema(ctx context.Context, sch *schema.Schema) error {
 	if err != nil {
 		return err
 	}
-
-	c.loadTables()
 
 	return nil
 }

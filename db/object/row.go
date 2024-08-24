@@ -17,3 +17,8 @@ func (r Row) ObjectTable() Table {
 }
 
 type Table string
+
+type Identifiable interface {
+	ObjectID() ID
+	ObjectTable() Table
+}

@@ -16,6 +16,7 @@ var (
 )
 
 type Registry struct {
+	store      storage.ReaderWriter
 	tables     *table.Querier[internalTableTables]
 	columns    *table.Querier[internalTableColumns]
 	marshalers map[object.Table]object.Marshaler
@@ -27,6 +28,7 @@ func New(store storage.ReaderWriter, factory schema.MarshalerFactory) (*Registry
 	columns := table.NewQuerier[internalTableColumns](store, factory(internalTableColumnsSchema), internalTableColumnsName)
 
 	a := &Registry{
+		store:      store,
 		tables:     tables,
 		columns:    columns,
 		marshalers: make(map[object.Table]object.Marshaler),
@@ -60,8 +62,13 @@ func (a *Registry) load() error {
 	return nil
 }
 
-func (a *Registry) Marshalers() map[object.Table]object.Marshaler {
-	return a.marshalers
+func (r *Registry) Querier(ctx context.Context, t object.Table) (*table.Querier[object.Row], error) {
+	m, ok := r.marshalers[t]
+	if !ok {
+		return nil, ErrTableNotFound
+	}
+
+	return table.NewQuerier[object.Row](r.store, m, t), nil
 }
 
 func (a *Registry) Create(ctx context.Context, schema *schema.Schema) error {

@@ -5,19 +5,14 @@ import (
 	"github.com/aliphe/filadb/db/storage"
 )
 
-type identifiable interface {
-	ObjectID() object.ID
-	ObjectTable() object.Table
-}
-
 // Querier is responsible for read-write operations on a given table.
-type Querier[T identifiable] struct {
+type Querier[T object.Identifiable] struct {
 	store     storage.ReaderWriter
 	marshaler object.Marshaler
 	table     object.Table
 }
 
-func NewQuerier[T identifiable](store storage.ReaderWriter, marshaler object.Marshaler, table object.Table) *Querier[T] {
+func NewQuerier[T object.Identifiable](store storage.ReaderWriter, marshaler object.Marshaler, table object.Table) *Querier[T] {
 	return &Querier[T]{
 		store:     store,
 		marshaler: marshaler,
