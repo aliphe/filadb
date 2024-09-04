@@ -8,6 +8,7 @@ import (
 	"github.com/aliphe/filadb/cmd/query/factory"
 	"github.com/aliphe/filadb/cmd/query/handler"
 	"github.com/aliphe/filadb/db"
+	idxregistry "github.com/aliphe/filadb/db/index/registry"
 	"github.com/aliphe/filadb/db/schema/marshaler"
 	"github.com/aliphe/filadb/db/schema/registry"
 	"github.com/aliphe/filadb/query/sql"
@@ -36,7 +37,12 @@ func main() {
 		panic(err)
 	}
 
-	db := db.NewClient(btree, schema)
+	index, err := idxregistry.New(btree, marshaler.New)
+	if err != nil {
+		panic(err)
+	}
+
+	db := db.NewClient(btree, schema, index)
 	q := sql.NewRunner(db)
 
 	handler, err := factory.NewHandler(q, handler.TypeTCP)

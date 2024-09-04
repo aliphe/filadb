@@ -16,23 +16,23 @@ var (
 )
 
 type Registry struct {
-	store      storage.ReaderWriter
-	tables     *table.Querier[internalTableTables]
-	columns    *table.Querier[internalTableColumns]
-	marshalers map[object.Table]object.Marshaler
-	factory    schema.MarshalerFactory
+	store       storage.ReaderWriter
+	tables      *table.Querier[internalTableTables]
+	columns     *table.Querier[internalTableColumns]
+	marshallers map[object.Table]object.Marshaler
+	factory     schema.MarshalerFactory
 }
 
 func New(store storage.ReaderWriter, factory schema.MarshalerFactory) (*Registry, error) {
-	tables := table.NewQuerier[internalTableTables](store, factory(internalTableTablesSchema), internalTableTablesName)
-	columns := table.NewQuerier[internalTableColumns](store, factory(internalTableColumnsSchema), internalTableColumnsName)
+	tables := table.NewQuerier[internalTableTables](store, factory(internalTableTablesSchema), nil, internalTableTablesName)
+	columns := table.NewQuerier[internalTableColumns](store, factory(internalTableColumnsSchema), nil, internalTableColumnsName)
 
 	a := &Registry{
-		store:      store,
-		tables:     tables,
-		columns:    columns,
-		marshalers: make(map[object.Table]object.Marshaler),
-		factory:    factory,
+		store:       store,
+		tables:      tables,
+		columns:     columns,
+		marshallers: make(map[object.Table]object.Marshaler),
+		factory:     factory,
 	}
 
 	err := a.load()
@@ -54,21 +54,21 @@ func (a *Registry) load() error {
 		if err != nil {
 			return err
 		}
-		a.marshalers[t.ObjectTable()] = mar
+		a.marshallers[t.ObjectTable()] = mar
 	}
 
-	a.marshalers["tables"] = a.factory(internalTableTablesSchema)
-	a.marshalers["columns"] = a.factory(internalTableColumnsSchema)
+	a.marshallers[internalTableTablesName] = a.factory(internalTableTablesSchema)
+	a.marshallers[internalTableColumnsName] = a.factory(internalTableColumnsSchema)
 	return nil
 }
 
-func (r *Registry) Querier(ctx context.Context, t object.Table) (*table.Querier[object.Row], error) {
-	m, ok := r.marshalers[t]
+func (r *Registry) Marshaller(ctx context.Context, t object.Table) (object.Marshaler, error) {
+	m, ok := r.marshallers[t]
 	if !ok {
 		return nil, ErrTableNotFound
 	}
 
-	return table.NewQuerier[object.Row](r.store, m, t), nil
+	return m, nil
 }
 
 func (a *Registry) Create(ctx context.Context, schema *schema.Schema) error {
@@ -82,7 +82,7 @@ func (a *Registry) Create(ctx context.Context, schema *schema.Schema) error {
 		return err
 	}
 
-	a.marshalers[schema.Table] = a.factory(schema)
+	a.marshallers[schema.Table] = a.factory(schema)
 
 	return nil
 }

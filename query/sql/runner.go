@@ -31,8 +31,7 @@ func (r *Runner) Run(ctx context.Context, expr string) ([]object.Row, error) {
 		return nil, fmt.Errorf("parsing expression: %w", err)
 	}
 
-	eval := eval.New(r.db)
-	out, err := eval.EvalExpr(ctx, ast)
+	out, err := eval.New(r.db).EvalExpr(ctx, ast)
 	if err != nil {
 		return nil, fmt.Errorf("eval expression: %w", err)
 	}

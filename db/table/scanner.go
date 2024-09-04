@@ -24,7 +24,7 @@ func (q *Querier[T]) Get(ctx context.Context, id object.ID, dst *T) (bool, error
 	return true, nil
 }
 
-func (q *Querier[T]) Scan(ctx context.Context, dest *[]T) error {
+func (q *Querier[T]) Scan(ctx context.Context, dest *[]T, filters ...object.Filter) error {
 	d, err := q.store.Scan(ctx, string(q.table))
 	if err != nil {
 		return err

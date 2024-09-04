@@ -78,20 +78,8 @@ type From struct {
 }
 
 type Where struct {
-	Filters []Filter
+	Filters []object.Filter
 }
-
-type Filter struct {
-	Column string
-	Op     Op
-	Value  interface{}
-}
-
-type Op int
-
-const (
-	OpEqual = iota
-)
 
 func Parse(tokens []*lexer.Token) (SQLQuery, error) {
 	in := newExpr(tokens)
@@ -495,7 +483,7 @@ func parseWhere(in *expr) (*Where, *expr, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	var filters []Filter
+	var filters []object.Filter
 	filters = append(filters, filter)
 	for {
 		_, exp, err := expr.read(1, is(lexer.KindAnd))
@@ -515,29 +503,29 @@ func parseWhere(in *expr) (*Where, *expr, error) {
 	}, expr, nil
 }
 
-func parseFilter(in *expr) (Filter, *expr, error) {
+func parseFilter(in *expr) (object.Filter, *expr, error) {
 	cur, expr, err := in.read(3, sequence(
 		oneOf(is(lexer.KindIdentifier), is(lexer.KindStringLiteral)),
 		is(lexer.KindEqual),
 		oneOf(is(lexer.KindStringLiteral), is(lexer.KindNumberLiteral)),
 	))
 	if err != nil {
-		return Filter{}, nil, err
+		return object.Filter{}, nil, err
 	}
 
-	var op Op
+	var op object.Op
 	switch cur[1].Kind {
 	case lexer.KindEqual:
-		op = OpEqual
+		op = object.OpEqual
 	default:
-		return Filter{}, nil, newUnexpectedTokenError(cur[1], lexer.KindEqual)
+		return object.Filter{}, nil, newUnexpectedTokenError(cur[1], lexer.KindEqual)
 	}
 	col, ok := cur[0].Value.(string)
 	if !ok {
-		return Filter{}, nil, fmt.Errorf("invalid column name %v", cur[0].Value)
+		return object.Filter{}, nil, fmt.Errorf("invalid column name %v", cur[0].Value)
 	}
 
-	return Filter{
+	return object.Filter{
 		Column: col,
 		Op:     op,
 		Value:  cur[2].Value,
