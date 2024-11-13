@@ -24,6 +24,8 @@ go.work
 tmp
 
 .DS_Store
+
 .db
+.testdb
 
 .zed

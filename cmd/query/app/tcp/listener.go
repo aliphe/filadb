@@ -10,7 +10,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/aliphe/filadb/cmd/query/handler"
+	"github.com/aliphe/filadb/cmd/query/app/handler"
 	"github.com/aliphe/filadb/db/csv"
 	"github.com/aliphe/filadb/query"
 )

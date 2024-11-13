@@ -3,7 +3,7 @@ package restapi
 import (
 	"net/http"
 
-	"github.com/aliphe/filadb/cmd/query/handler"
+	"github.com/aliphe/filadb/cmd/query/app/handler"
 	"github.com/aliphe/filadb/query"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
