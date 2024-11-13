@@ -62,13 +62,13 @@ func (a *Registry) load() error {
 	return nil
 }
 
-func (r *Registry) Querier(ctx context.Context, t object.Table) (*table.Querier[object.Row], error) {
+func (r *Registry) Marshaler(ctx context.Context, t object.Table) (object.Marshaler, error) {
 	m, ok := r.marshalers[t]
 	if !ok {
 		return nil, ErrTableNotFound
 	}
 
-	return table.NewQuerier[object.Row](r.store, m, t), nil
+	return m, nil
 }
 
 func (a *Registry) Create(ctx context.Context, schema *schema.Schema) error {

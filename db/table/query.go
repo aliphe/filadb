@@ -9,6 +9,7 @@ import (
 type Querier[T object.Identifiable] struct {
 	store     storage.ReaderWriter
 	marshaler object.Marshaler
+	indexes   []interface{} // for future use
 	table     object.Table
 }
 

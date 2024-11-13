@@ -11,7 +11,7 @@ import (
 
 type schemaRegistry interface {
 	Create(ctx context.Context, schema *schema.Schema) error
-	Querier(ctx context.Context, table object.Table) (*table.Querier[object.Row], error)
+	Marshaler(ctx context.Context, table object.Table) (object.Marshaler, error)
 }
 
 type Client struct {
@@ -28,11 +28,13 @@ func NewClient(store storage.ReaderWriter, schema schemaRegistry) *Client {
 	return c
 }
 
-func (c *Client) Acquire(ctx context.Context, table object.Table) (*table.Querier[object.Row], error) {
-	q, err := c.schema.Querier(ctx, table)
+func (c *Client) Acquire(ctx context.Context, t object.Table) (*table.Querier[object.Row], error) {
+	m, err := c.schema.Marshaler(ctx, t)
 	if err != nil {
 		return nil, err
 	}
+
+	q := table.NewQuerier[object.Row](c.store, m, t)
 
 	return q, nil
 }
