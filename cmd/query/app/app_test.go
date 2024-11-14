@@ -12,8 +12,8 @@ import (
 
 func Test_Run(t *testing.T) {
 	type step struct {
-		given []byte
-		want  []byte
+		given string
+		want  string
 	}
 	tests := map[string]struct {
 		scenario []step
@@ -21,8 +21,20 @@ func Test_Run(t *testing.T) {
 		"Read system tables": {
 			scenario: []step{
 				{
-					given: []byte("SELECT * FROM tables;"),
-					want:  []byte(""),
+					given: "CREATE TABLE users (id NUMBER, email TEXT);",
+					want:  "CREATE TABLE\n>",
+				},
+				{
+					given: "INSERT INTO users (id, email) VALUES (1, 'test@tust.com'), (2, 'tast@test.com');",
+					want:  "INSERT 2\n>",
+				},
+				{
+					given: "SELECT * FROM users;",
+					want: `id,email
+1,test@tust.com
+2,tast@test.com
+
+>`,
 				},
 			},
 		},
@@ -43,20 +55,18 @@ func Test_Run(t *testing.T) {
 			}
 
 			for _, step := range tc.scenario {
-				_, err := conn.Write(step.given)
+				_, err := conn.Write([]byte(step.given))
 				if err != nil {
 					t.Fatal(err)
 				}
-				res, err := bufio.NewReader(conn).ReadBytes('\n')
+				res, err := bufio.NewReader(conn).ReadBytes('>')
 				if err != nil {
 					t.Fatal(err)
 				}
-
-				if string(res) != string(step.want) {
+				if string(res) != step.want {
 					t.Fatal(fmt.Errorf("res mismatch, want='%s', got='%s'", string(step.want), string(res)))
 				}
 			}
-
 		})
 	}
 }

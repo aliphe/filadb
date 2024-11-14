@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/aliphe/filadb/db"
-	"github.com/aliphe/filadb/db/object"
 	"github.com/aliphe/filadb/query/sql/eval"
 	"github.com/aliphe/filadb/query/sql/lexer"
 	"github.com/aliphe/filadb/query/sql/parser"
@@ -21,7 +20,7 @@ func NewRunner(db *db.Client) *Runner {
 	}
 }
 
-func (r *Runner) Run(ctx context.Context, expr string) ([]object.Row, error) {
+func (r *Runner) Run(ctx context.Context, expr string) ([]byte, error) {
 	tokens, err := lexer.Tokenize(expr)
 	if err != nil {
 		return nil, err

@@ -1,17 +1,16 @@
 package tcp
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"log/slog"
 	"net"
 	"time"
 
 	"github.com/aliphe/filadb/cmd/query/app/handler"
-	"github.com/aliphe/filadb/db/csv"
 	"github.com/aliphe/filadb/query"
 )
 
@@ -75,7 +74,7 @@ func (l *Listener) handleClient(conn net.Conn) {
 				continue
 			}
 
-			_, err = conn.Write(out)
+			_, err = conn.Write(append(out, []byte("\n>")...))
 			if err != nil {
 				slog.Error("write response", slog.Any("err", err))
 				return
@@ -94,19 +93,13 @@ func (l *Listener) handleRequest(q string) ([]byte, error) {
 	if err != nil {
 		return []byte(fmt.Sprintf("run sql query: %s\n", err)), nil
 	}
+	log.Println(string(res))
 
 	if len(res) == 0 {
 		return nil, nil
 	}
 
-	var b bytes.Buffer
-	csv := csv.NewWriter(&b)
-	err = csv.Write(res)
-	if err != nil {
-		return []byte(fmt.Sprintf("marshall result: %s", err)), nil
-	}
-
-	return b.Bytes(), nil
+	return res, nil
 }
 
 func readQueries(r io.Reader) ([]string, error) {

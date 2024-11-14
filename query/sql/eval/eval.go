@@ -1,10 +1,13 @@
 package eval
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/aliphe/filadb/db"
+	"github.com/aliphe/filadb/db/csv"
 	"github.com/aliphe/filadb/db/object"
 	"github.com/aliphe/filadb/db/schema"
 	"github.com/aliphe/filadb/query/sql/parser"
@@ -21,40 +24,77 @@ func New(client *db.Client) *Evaluator {
 	}
 }
 
-func (e *Evaluator) EvalExpr(ctx context.Context, ast parser.SQLQuery) ([]object.Row, error) {
-	if ast.Type == parser.QueryTypeInsert {
-		return nil, e.evalInsert(ctx, ast.Insert)
-	} else if ast.Type == parser.QueryTypeSelect {
-		return e.evalSelect(ctx, ast.Select)
-	} else if ast.Type == parser.QueryTypeUpdate {
-		return nil, e.evalUpdate(ctx, ast.Update)
-	} else if ast.Type == parser.QueryTypeCreateTable {
-		return nil, e.evalCreateTable(ctx, ast.CreateTable)
-	} else {
-		return nil, fmt.Errorf("%s not implemented", ast.Type)
+func toCsv(rows []object.Row) ([]byte, error) {
+	var b bytes.Buffer
+	csv := csv.NewWriter(&b)
+	err := csv.Write(rows)
+	if err != nil {
+		return []byte(fmt.Sprintf("marshall result: %s", err)), nil
+	}
+	return b.Bytes(), nil
+}
+
+func raw(s string) []byte {
+	return []byte(s)
+}
+
+func (e *Evaluator) EvalExpr(ctx context.Context, ast parser.SQLQuery) ([]byte, error) {
+	switch ast.Type {
+	case parser.QueryTypeInsert:
+		{
+			n, err := e.evalInsert(ctx, ast.Insert)
+			if err != nil {
+				return nil, err
+			}
+			return raw("INSERT " + strconv.Itoa(n)), nil
+		}
+	case parser.QueryTypeSelect:
+		{
+			res, err := e.evalSelect(ctx, ast.Select)
+			if err != nil {
+				return nil, err
+			}
+			return toCsv(res)
+		}
+	case parser.QueryTypeUpdate:
+		{
+			n, err := e.evalUpdate(ctx, ast.Update)
+			if err != nil {
+				return nil, err
+			}
+			return raw("UPDATE " + strconv.Itoa(n)), nil
+		}
+	case parser.QueryTypeCreateTable:
+		{
+			return raw("CREATE TABLE"), e.evalCreateTable(ctx, ast.CreateTable)
+		}
+	default:
+		{
+			return nil, fmt.Errorf("%s not implemented", ast.Type)
+		}
 	}
 }
 
-func (e *Evaluator) evalUpdate(ctx context.Context, update parser.Update) error {
+func (e *Evaluator) evalUpdate(ctx context.Context, update parser.Update) (int, error) {
 	rows, err := e.evalFrom(ctx, update.From)
 	if err != nil {
-		return fmt.Errorf("eval from: %w", err)
+		return 0, fmt.Errorf("eval from: %w", err)
 	}
 	q, err := e.client.Acquire(ctx, update.From.Table)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
-	for _, r := range rows {
+	for i, r := range rows {
 		for k, v := range update.Set.Update {
 			r[k] = v
 		}
 		if err := q.Update(ctx, r); err != nil {
-			return fmt.Errorf("apply update for row %v: %w", r["id"], err)
+			return i, fmt.Errorf("apply update for row %v: %w", r["id"], err)
 		}
 	}
 
-	return nil
+	return len(rows), nil
 }
 
 func (e *Evaluator) evalCreateTable(ctx context.Context, create parser.CreateTable) error {
@@ -94,22 +134,22 @@ func (e *Evaluator) evalSelect(ctx context.Context, sel parser.Select) ([]object
 	return out, nil
 }
 
-func (e *Evaluator) evalInsert(ctx context.Context, ins parser.Insert) error {
+func (e *Evaluator) evalInsert(ctx context.Context, ins parser.Insert) (int, error) {
 	q, err := e.client.Acquire(ctx, ins.Table)
 	if err != nil {
-		return err
+		return 0, err
 	}
-	for _, r := range ins.Rows {
+	for i, r := range ins.Rows {
 		if _, ok := r["id"]; !ok {
 			r["id"] = uuid.New().String()
 		}
 
 		err := q.Insert(ctx, r)
 		if err != nil {
-			return err
+			return i, err
 		}
 	}
-	return nil
+	return len(ins.Rows), nil
 }
 
 func (e *Evaluator) evalFrom(ctx context.Context, from parser.From) ([]object.Row, error) {

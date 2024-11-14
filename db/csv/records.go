@@ -38,5 +38,8 @@ func (w *Writer) Write(rows []object.Row) error {
 		records = append(records, vals)
 	}
 
-	return csv.NewWriter(w.w).WriteAll(records)
+	writer := csv.NewWriter(w.w)
+	writer.WriteAll(records)
+	writer.Flush()
+	return writer.Error()
 }

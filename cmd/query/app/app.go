@@ -5,8 +5,7 @@ import (
 
 	"github.com/aliphe/filadb/btree"
 	"github.com/aliphe/filadb/btree/file"
-	"github.com/aliphe/filadb/cmd/query/app/factory"
-	"github.com/aliphe/filadb/cmd/query/app/handler"
+	"github.com/aliphe/filadb/cmd/query/app/tcp"
 	"github.com/aliphe/filadb/db"
 	"github.com/aliphe/filadb/db/schema/marshaler"
 	"github.com/aliphe/filadb/db/schema/registry"
@@ -50,10 +49,7 @@ func Run(opts ...Option) error {
 	db := db.NewClient(btree, schema)
 	q := sql.NewRunner(db)
 
-	handler, err := factory.NewHandler(q, handler.TypeTCP)
-	if err != nil {
-		return fmt.Errorf("init request handler: %w", err)
-	}
+	handler := tcp.New(q)
 
 	if err := handler.Listen(); err != nil {
 		return fmt.Errorf("listening to request: %w", err)
