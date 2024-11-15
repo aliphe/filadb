@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/aliphe/filadb/db/object"
 	"github.com/aliphe/filadb/db/schema"
@@ -54,7 +55,8 @@ func (a *Registry) load() error {
 		if err != nil {
 			return err
 		}
-		a.marshalers[t.ObjectTable()] = mar
+		slog.Debug("loaded from storage", "table", t.Table)
+		a.marshalers[t.Table] = mar
 	}
 
 	a.marshalers["tables"] = a.factory(internalTableTablesSchema)
