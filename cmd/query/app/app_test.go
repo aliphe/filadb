@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/aliphe/filadb/btree/file"
 )
@@ -22,19 +24,15 @@ func Test_Run(t *testing.T) {
 			scenario: []step{
 				{
 					given: "CREATE TABLE users (id NUMBER, email TEXT);",
-					want:  "CREATE TABLE\n>",
+					want:  strings.Join([]string{"CREATE TABLE", ">"}, "\n"),
 				},
 				{
 					given: "INSERT INTO users (id, email) VALUES (1, 'test@tust.com'), (2, 'tast@test.com');",
-					want:  "INSERT 2\n>",
+					want:  strings.Join([]string{"INSERT 2", ">"}, "\n"),
 				},
 				{
 					given: "SELECT * FROM users;",
-					want: `id,email
-1,test@tust.com
-2,tast@test.com
-
->`,
+					want:  strings.Join([]string{"id,email", "1,test@tust.com", "2,tast@test.com", ">"}, "\n"),
 				},
 			},
 		},
@@ -48,6 +46,8 @@ func Test_Run(t *testing.T) {
 			}
 
 			go Run(WithFileOptions(file.WithPath(".testdb")))
+
+			time.Sleep(50 * time.Millisecond)
 
 			conn, err := net.Dial("tcp", ":5432")
 			if err != nil {

@@ -35,7 +35,7 @@ func toCsv(rows []object.Row) ([]byte, error) {
 }
 
 func raw(s string) []byte {
-	return []byte(s)
+	return []byte(s + "\n")
 }
 
 func (e *Evaluator) EvalExpr(ctx context.Context, ast parser.SQLQuery) ([]byte, error) {

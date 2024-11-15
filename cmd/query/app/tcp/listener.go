@@ -74,7 +74,7 @@ func (l *Listener) handleClient(conn net.Conn) {
 				continue
 			}
 
-			_, err = conn.Write(append(out, []byte("\n>")...))
+			_, err = conn.Write(append(out, []byte(">")...))
 			if err != nil {
 				slog.Error("write response", slog.Any("err", err))
 				return
