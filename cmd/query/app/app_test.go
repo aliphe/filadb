@@ -38,6 +38,10 @@ func Test_Run(t *testing.T) {
 					given: "SELECT * FROM users where id = 1;",
 					want:  strings.Join([]string{"id,email", "1,test@tust.com", ">"}, "\n"),
 				},
+				{
+					given: "SELECT email, id, * FROM users where id = 2;",
+					want:  strings.Join([]string{"email,id,id,email", "tast@test.com,2,2,tast@test.com", ">"}, "\n"),
+				},
 			},
 		},
 	}
@@ -68,7 +72,7 @@ func Test_Run(t *testing.T) {
 					t.Fatal(err)
 				}
 				if string(res) != step.want {
-					t.Fatal(fmt.Errorf("res mismatch, want='%s', got='%s'", string(step.want), string(res)))
+					t.Fatal(fmt.Errorf("%s mismatch, want='%s', got='%s'", step.given, string(step.want), string(res)))
 				}
 			}
 		})

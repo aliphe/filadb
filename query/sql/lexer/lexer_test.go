@@ -29,6 +29,20 @@ func Test_NextToken(t *testing.T) {
 				KindSemiColumn,
 			},
 		},
+		{
+			given: `SELECT id, name, * from users;`,
+			want: []Kind{
+				KindSelect,
+				KindIdentifier,
+				KindComma,
+				KindIdentifier,
+				KindComma,
+				KindIdentifier,
+				KindFrom,
+				KindIdentifier,
+				KindSemiColumn,
+			},
+		},
 	}
 
 	for _, tc := range tests {

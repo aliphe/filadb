@@ -1,13 +1,11 @@
 package eval
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"strconv"
 
 	"github.com/aliphe/filadb/db"
-	"github.com/aliphe/filadb/db/csv"
 	"github.com/aliphe/filadb/db/object"
 	"github.com/aliphe/filadb/db/schema"
 	"github.com/aliphe/filadb/query/sql/parser"
@@ -22,16 +20,6 @@ func New(client *db.Client) *Evaluator {
 	return &Evaluator{
 		client: client,
 	}
-}
-
-func toCsv(rows []object.Row) ([]byte, error) {
-	var b bytes.Buffer
-	csv := csv.NewWriter(&b)
-	err := csv.Write(rows)
-	if err != nil {
-		return []byte(fmt.Sprintf("marshall result: %s", err)), nil
-	}
-	return b.Bytes(), nil
 }
 
 func raw(s string) []byte {
@@ -54,7 +42,7 @@ func (e *Evaluator) EvalExpr(ctx context.Context, ast parser.SQLQuery) ([]byte, 
 			if err != nil {
 				return nil, err
 			}
-			return toCsv(res)
+			return res, nil
 		}
 	case parser.QueryTypeUpdate:
 		{
@@ -106,15 +94,14 @@ func (e *Evaluator) evalCreateTable(ctx context.Context, create parser.CreateTab
 	return e.client.CreateSchema(ctx, &sch)
 }
 
-func (e *Evaluator) evalSelect(ctx context.Context, sel parser.Select) ([]object.Row, error) {
+func (e *Evaluator) evalSelect(ctx context.Context, sel parser.Select) ([]byte, error) {
 	from, err := e.evalFrom(ctx, sel.From)
 	if err != nil {
 		return nil, fmt.Errorf("eval from: %w", err)
 	}
 
-	fields := make([]parser.Field, 0, len(sel.Fields))
+	fields := make([]string, 0, len(sel.Fields))
 
-	// not fan of this
 	sh, err := e.client.Shape(ctx, sel.From.Table)
 	if err != nil {
 		return nil, err
@@ -122,25 +109,31 @@ func (e *Evaluator) evalSelect(ctx context.Context, sel parser.Select) ([]object
 
 	for _, s := range sel.Fields {
 		if s.Column == "*" {
-			// add all fields in sh
+			fields = append(fields, sh...)
 		} else {
-			fields = append(fields, s)
+			fields = append(fields, s.Column)
 		}
 	}
 
-	if all {
-		return from, nil
+	var out string
+	for i, f := range fields {
+		out += f
+		if i < len(fields)-1 {
+			out += ","
+		}
 	}
-
-	out := make([]object.Row, 0, len(from))
+	out += "\n"
 	for _, row := range from {
-		ins := make(object.Row)
-		for _, f := range sel.Fields {
-			ins[f.Column] = row[f.Column]
+		for i, f := range fields {
+			out += fmt.Sprint(row[f])
+			if i < len(fields)-1 {
+				out += ","
+			}
 		}
-		out = append(out, ins)
+		out += "\n"
 	}
-	return out, nil
+
+	return []byte(out), nil
 }
 
 func (e *Evaluator) evalInsert(ctx context.Context, ins parser.Insert) (int, error) {
