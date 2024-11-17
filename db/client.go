@@ -47,3 +47,12 @@ func (c *Client) CreateSchema(ctx context.Context, sch *schema.Schema) error {
 
 	return nil
 }
+
+func (c *Client) Shape(ctx context.Context, t object.Table) ([]string, error) {
+	m, err := c.schema.Marshaler(ctx, t)
+	if err != nil {
+		return nil, err
+	}
+
+	return m.Shape(), nil
+}

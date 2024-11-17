@@ -34,6 +34,10 @@ func Test_Run(t *testing.T) {
 					given: "SELECT * FROM users;",
 					want:  strings.Join([]string{"id,email", "1,test@tust.com", "2,tast@test.com", ">"}, "\n"),
 				},
+				{
+					given: "SELECT * FROM users where id = 1;",
+					want:  strings.Join([]string{"id,email", "1,test@tust.com", ">"}, "\n"),
+				},
 			},
 		},
 	}

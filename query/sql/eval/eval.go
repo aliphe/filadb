@@ -112,10 +112,19 @@ func (e *Evaluator) evalSelect(ctx context.Context, sel parser.Select) ([]object
 		return nil, fmt.Errorf("eval from: %w", err)
 	}
 
-	var all bool
+	fields := make([]parser.Field, 0, len(sel.Fields))
+
+	// not fan of this
+	sh, err := e.client.Shape(ctx, sel.From.Table)
+	if err != nil {
+		return nil, err
+	}
+
 	for _, s := range sel.Fields {
 		if s.Column == "*" {
-			all = true
+			// add all fields in sh
+		} else {
+			fields = append(fields, s)
 		}
 	}
 

@@ -11,13 +11,24 @@ import (
 )
 
 type marshaler struct {
+	src    *schema.Schema
 	schema string
 }
 
 func New(schema *schema.Schema) object.Marshaler {
 	return &marshaler{
+		src:    schema,
 		schema: toSchema(schema),
 	}
+}
+
+func (a *marshaler) Shape() []string {
+	out := make([]string, 0, len(a.src.Columns))
+	for _, c := range a.src.Columns {
+		out = append(out, c.Name)
+	}
+
+	return out
 }
 
 func (a *marshaler) Marshal(obj interface{}) ([]byte, error) {

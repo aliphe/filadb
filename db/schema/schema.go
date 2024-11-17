@@ -1,8 +1,6 @@
 package schema
 
-import (
-	"github.com/aliphe/filadb/db/object"
-)
+import "github.com/aliphe/filadb/db/object"
 
 type MarshalerFactory func(*Schema) object.Marshaler
 
