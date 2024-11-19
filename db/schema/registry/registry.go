@@ -17,23 +17,21 @@ var (
 )
 
 type Registry struct {
-	store      storage.ReaderWriter
-	tables     *table.Querier[internalTableTables]
-	columns    *table.Querier[internalTableColumns]
-	marshalers map[object.Table]object.Marshaler
-	factory    schema.MarshalerFactory
+	store   storage.ReaderWriter
+	tables  *table.Querier[internalTableTables]
+	columns *table.Querier[internalTableColumns]
+	schemas map[object.Table]*schema.Schema
 }
 
-func New(store storage.ReaderWriter, factory schema.MarshalerFactory) (*Registry, error) {
-	tables := table.NewQuerier[internalTableTables](store, factory(internalTableTablesSchema), internalTableTablesName)
-	columns := table.NewQuerier[internalTableColumns](store, factory(internalTableColumnsSchema), internalTableColumnsName)
+func New(store storage.ReaderWriter) (*Registry, error) {
+	tables := table.NewQuerier[internalTableTables](store, internalTableTablesSchema.Marshaler(), internalTableTablesName)
+	columns := table.NewQuerier[internalTableColumns](store, internalTableColumnsSchema.Marshaler(), internalTableColumnsName)
 
 	a := &Registry{
-		store:      store,
-		tables:     tables,
-		columns:    columns,
-		marshalers: make(map[object.Table]object.Marshaler),
-		factory:    factory,
+		store:   store,
+		tables:  tables,
+		columns: columns,
+		schemas: make(map[object.Table]*schema.Schema),
 	}
 
 	err := a.load()
@@ -56,16 +54,16 @@ func (a *Registry) load() error {
 			return err
 		}
 		slog.Debug("loaded from storage", "table", t.Table)
-		a.marshalers[t.Table] = mar
+		a.schemas[t.Table] = mar
 	}
 
-	a.marshalers["tables"] = a.factory(internalTableTablesSchema)
-	a.marshalers["columns"] = a.factory(internalTableColumnsSchema)
+	a.schemas["tables"] = internalTableTablesSchema
+	a.schemas["columns"] = internalTableColumnsSchema
 	return nil
 }
 
-func (r *Registry) Marshaler(ctx context.Context, t object.Table) (object.Marshaler, error) {
-	m, ok := r.marshalers[t]
+func (r *Registry) Get(ctx context.Context, id object.ID) (*schema.Schema, error) {
+	m, ok := r.schemas[object.Table(id)]
 	if !ok {
 		return nil, ErrTableNotFound
 	}
@@ -84,7 +82,7 @@ func (a *Registry) Create(ctx context.Context, schema *schema.Schema) error {
 		return err
 	}
 
-	a.marshalers[schema.Table] = a.factory(schema)
+	a.schemas[schema.Table] = schema
 
 	return nil
 }

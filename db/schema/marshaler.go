@@ -1,25 +1,15 @@
-package marshaler
+package schema
 
 import (
 	"bytes"
 	"encoding/gob"
 	"errors"
 	"reflect"
-
-	"github.com/aliphe/filadb/db/object"
-	"github.com/aliphe/filadb/db/schema"
 )
 
 type marshaler struct {
-	src    *schema.Schema
+	src    *Schema
 	schema string
-}
-
-func New(schema *schema.Schema) object.Marshaler {
-	return &marshaler{
-		src:    schema,
-		schema: toSchema(schema),
-	}
 }
 
 func (a *marshaler) Shape() []string {

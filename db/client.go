@@ -9,17 +9,17 @@ import (
 	"github.com/aliphe/filadb/db/table"
 )
 
-type schemaRegistry interface {
-	Create(ctx context.Context, schema *schema.Schema) error
-	Marshaler(ctx context.Context, table object.Table) (object.Marshaler, error)
+type readerWriter[T object.Identifiable] interface {
+	Create(ctx context.Context, t T) error
+	Get(ctx context.Context, id object.ID) (T, error)
 }
 
 type Client struct {
 	store  storage.ReaderWriter
-	schema schemaRegistry
+	schema readerWriter[*schema.Schema]
 }
 
-func NewClient(store storage.ReaderWriter, schema schemaRegistry) *Client {
+func NewClient(store storage.ReaderWriter, schema readerWriter[*schema.Schema]) *Client {
 	c := &Client{
 		store:  store,
 		schema: schema,
@@ -29,12 +29,12 @@ func NewClient(store storage.ReaderWriter, schema schemaRegistry) *Client {
 }
 
 func (c *Client) Acquire(ctx context.Context, t object.Table) (*table.Querier[object.Row], error) {
-	m, err := c.schema.Marshaler(ctx, t)
+	m, err := c.schema.Get(ctx, object.ID(t))
 	if err != nil {
 		return nil, err
 	}
 
-	q := table.NewQuerier[object.Row](c.store, m, t)
+	q := table.NewQuerier[object.Row](c.store, m.Marshaler(), t)
 
 	return q, nil
 }
@@ -49,10 +49,10 @@ func (c *Client) CreateSchema(ctx context.Context, sch *schema.Schema) error {
 }
 
 func (c *Client) Shape(ctx context.Context, t object.Table) ([]string, error) {
-	m, err := c.schema.Marshaler(ctx, t)
+	m, err := c.schema.Get(ctx, object.ID(t))
 	if err != nil {
 		return nil, err
 	}
 
-	return m.Shape(), nil
+	return m.Marshaler().Shape(), nil
 }

@@ -7,7 +7,7 @@ import (
 	"github.com/aliphe/filadb/db/schema"
 )
 
-func (a *Registry) fromStorage(ctx context.Context, table object.Table) (object.Marshaler, error) {
+func (a *Registry) fromStorage(ctx context.Context, table object.Table) (*schema.Schema, error) {
 	out := schema.Schema{
 		Table: table,
 	}
@@ -25,5 +25,5 @@ func (a *Registry) fromStorage(ctx context.Context, table object.Table) (object.
 		}
 	}
 
-	return a.factory(&out), nil
+	return &out, nil
 }

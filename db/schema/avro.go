@@ -1,12 +1,10 @@
-package marshaler
+package schema
 
 import (
 	"encoding/json"
-
-	"github.com/aliphe/filadb/db/schema"
 )
 
-func toSchema(s *schema.Schema) string {
+func toSchema(s *Schema) string {
 	sch := avroSchema{
 		Type: "record",
 		Name: string(s.Table),
@@ -33,14 +31,14 @@ type avroField struct {
 	Type interface{} `json:"type"`
 }
 
-var avroTypeMapper = map[schema.ColumnType]string{
-	schema.ColumnTypeText:   string(fieldTypeString),
-	schema.ColumnTypeNumber: string(fieldTypeNumber),
+var avroTypeMapper = map[ColumnType]string{
+	ColumnTypeText:   string(fieldTypeString),
+	ColumnTypeNumber: string(fieldTypeNumber),
 }
 
-var columnTypeMapper = map[string]schema.ColumnType{
-	string(fieldTypeString): schema.ColumnTypeText,
-	string(fieldTypeNumber): schema.ColumnTypeNumber,
+var columnTypeMapper = map[string]ColumnType{
+	string(fieldTypeString): ColumnTypeText,
+	string(fieldTypeNumber): ColumnTypeNumber,
 }
 
 type fieldType string
