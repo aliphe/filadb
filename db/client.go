@@ -100,6 +100,14 @@ func (c *Client) Scan(ctx context.Context, t object.Table, dst *[]object.Row) er
 		return err
 	}
 
+	// scan table indexes
+	//
+	// find best one (heuristic TBD)
+	//
+	// fetch ids from index (my btree does not handle multi values on same key rn)
+	//
+	// get each row with GetRow
+
 	s, err := c.store.Scan(ctx, string(t))
 	if err != nil {
 		return nil
