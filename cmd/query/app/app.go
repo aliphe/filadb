@@ -45,7 +45,7 @@ func Run(opts ...Option) error {
 		return err
 	}
 
-	db := db.NewClient(btree, schema)
+	db := db.NewClient(btree, schema, nil)
 	q := sql.NewRunner(db)
 
 	handler := tcp.New(q)

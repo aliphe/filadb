@@ -3,42 +3,119 @@ package db
 import (
 	"context"
 
+	"github.com/aliphe/filadb/db/index"
 	"github.com/aliphe/filadb/db/object"
 	"github.com/aliphe/filadb/db/schema"
 	"github.com/aliphe/filadb/db/storage"
-	"github.com/aliphe/filadb/db/table"
 )
 
-type readerWriter[T object.Identifiable] interface {
-	Create(ctx context.Context, t T) error
-	Get(ctx context.Context, id object.ID) (T, error)
+type schemaReaderWriter interface {
+	Create(ctx context.Context, sch *schema.Schema) error
+	Get(ctx context.Context, table object.Table) (*schema.Schema, error)
+}
+
+type indexScanner interface {
+	Scan(ctx context.Context, t object.Table, cols ...string) ([]index.Index, error)
 }
 
 type Client struct {
 	store  storage.ReaderWriter
-	schema readerWriter[*schema.Schema]
+	schema schemaReaderWriter
+	index  indexScanner
 }
 
-func NewClient(store storage.ReaderWriter, schema readerWriter[*schema.Schema]) *Client {
+func NewClient(store storage.ReaderWriter, schema schemaReaderWriter, index indexScanner) *Client {
 	c := &Client{
 		store:  store,
 		schema: schema,
+		index:  index,
 	}
 
 	return c
 }
 
-func (c *Client) Acquire(ctx context.Context, t object.Table) (*table.Querier[object.Row], error) {
-	m, err := c.schema.Get(ctx, object.ID(t))
+func (c *Client) InsertRow(ctx context.Context, t object.Table, r object.Row) error {
+	sch, err := c.schema.Get(ctx, t)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	q := table.NewQuerier[object.Row](c.store, m.Marshaler(), t)
+	b, err := sch.Marshaler().Marshal(r)
+	if err != nil {
+		return err
+	}
 
-	return q, nil
+	err = c.store.Add(ctx, string(t), string(r.ObjectID()), b)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
+func (c *Client) UpdateRow(ctx context.Context, t object.Table, r object.Row) error {
+	sch, err := c.schema.Get(ctx, t)
+	if err != nil {
+		return err
+	}
+
+	b, err := sch.Marshaler().Marshal(r)
+	if err != nil {
+		return err
+	}
+
+	err = c.store.Set(ctx, string(t), string(r.ObjectID()), b)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *Client) GetRow(ctx context.Context, t object.Table, id object.ID, dst *object.Row) error {
+	sch, err := c.schema.Get(ctx, t)
+	if err != nil {
+		return err
+	}
+
+	bs, ok, err := c.store.Get(ctx, string(t), string(id))
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return nil
+	}
+
+	err = sch.Marshaler().Unmarshal(bs, dst)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *Client) Scan(ctx context.Context, t object.Table, dst *[]object.Row) error {
+	sch, err := c.schema.Get(ctx, t)
+	if err != nil {
+		return err
+	}
+
+	s, err := c.store.Scan(ctx, string(t))
+	if err != nil {
+		return nil
+	}
+
+	err = sch.Marshaler().UnmarshalBatch(s, dst)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+/**
+* Schema functions
+ */
 func (c *Client) CreateSchema(ctx context.Context, sch *schema.Schema) error {
 	err := c.schema.Create(ctx, sch)
 	if err != nil {
@@ -47,12 +124,11 @@ func (c *Client) CreateSchema(ctx context.Context, sch *schema.Schema) error {
 
 	return nil
 }
-
 func (c *Client) Shape(ctx context.Context, t object.Table) ([]string, error) {
-	m, err := c.schema.Get(ctx, object.ID(t))
+	sch, err := c.schema.Get(ctx, t)
 	if err != nil {
 		return nil, err
 	}
 
-	return m.Marshaler().Shape(), nil
+	return sch.Marshaler().Shape(), nil
 }

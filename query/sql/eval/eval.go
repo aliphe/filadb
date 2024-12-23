@@ -68,16 +68,12 @@ func (e *Evaluator) evalUpdate(ctx context.Context, update parser.Update) (int, 
 	if err != nil {
 		return 0, fmt.Errorf("eval from: %w", err)
 	}
-	q, err := e.client.Acquire(ctx, update.From.Table)
-	if err != nil {
-		return 0, err
-	}
 
 	for i, r := range rows {
 		for k, v := range update.Set.Update {
 			r[k] = v
 		}
-		if err := q.Update(ctx, r); err != nil {
+		if err := e.client.UpdateRow(ctx, update.From.Table, r); err != nil {
 			return i, fmt.Errorf("apply update for row %v: %w", r["id"], err)
 		}
 	}
@@ -137,16 +133,12 @@ func (e *Evaluator) evalSelect(ctx context.Context, sel parser.Select) ([]byte, 
 }
 
 func (e *Evaluator) evalInsert(ctx context.Context, ins parser.Insert) (int, error) {
-	q, err := e.client.Acquire(ctx, ins.Table)
-	if err != nil {
-		return 0, err
-	}
 	for i, r := range ins.Rows {
 		if _, ok := r["id"]; !ok {
 			r["id"] = uuid.New().String()
 		}
 
-		err := q.Insert(ctx, r)
+		err := e.client.InsertRow(ctx, ins.Table, r)
 		if err != nil {
 			return i, err
 		}
@@ -155,25 +147,18 @@ func (e *Evaluator) evalInsert(ctx context.Context, ins parser.Insert) (int, err
 }
 
 func (e *Evaluator) evalFrom(ctx context.Context, from parser.From) ([]object.Row, error) {
-	q, err := e.client.Acquire(ctx, from.Table)
-	if err != nil {
-		return nil, err
-	}
 	id, hasId := idFilter(from.Where)
 	if hasId {
 		var row object.Row
-		ok, err := q.Get(ctx, id, &row)
+		err := e.client.GetRow(ctx, from.Table, id, &row)
 		if err != nil {
 			return nil, err
-		}
-		if !ok {
-			return nil, nil
 		}
 		return []object.Row{row}, nil
 	}
 
 	var rows []object.Row
-	err = q.Scan(ctx, &rows)
+	err := e.client.Scan(ctx, from.Table, &rows)
 	if err != nil {
 		return nil, err
 	}

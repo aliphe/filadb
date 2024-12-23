@@ -62,7 +62,7 @@ func (a *Registry) load() error {
 	return nil
 }
 
-func (r *Registry) Get(ctx context.Context, id object.ID) (*schema.Schema, error) {
+func (r *Registry) Get(ctx context.Context, id object.Table) (*schema.Schema, error) {
 	m, ok := r.schemas[object.Table(id)]
 	if !ok {
 		return nil, ErrTableNotFound
