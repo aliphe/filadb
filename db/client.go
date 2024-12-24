@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 
-	"github.com/aliphe/filadb/db/index"
 	"github.com/aliphe/filadb/db/object"
 	"github.com/aliphe/filadb/db/schema"
 	"github.com/aliphe/filadb/db/storage"
@@ -14,21 +13,15 @@ type schemaReaderWriter interface {
 	Get(ctx context.Context, table object.Table) (*schema.Schema, error)
 }
 
-type indexScanner interface {
-	Scan(ctx context.Context, t object.Table, cols ...string) ([]index.Index, error)
-}
-
 type Client struct {
 	store  storage.ReaderWriter
 	schema schemaReaderWriter
-	index  indexScanner
 }
 
-func NewClient(store storage.ReaderWriter, schema schemaReaderWriter, index indexScanner) *Client {
+func NewClient(store storage.ReaderWriter, schema schemaReaderWriter) *Client {
 	c := &Client{
 		store:  store,
 		schema: schema,
-		index:  index,
 	}
 
 	return c
