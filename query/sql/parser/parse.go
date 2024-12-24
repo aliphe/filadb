@@ -196,7 +196,7 @@ func parseSet(in *expr) (Set, *expr, error) {
 		return Set{}, nil, err
 	}
 
-	row, expr, err := parseRow(expr)
+	row, expr, err := parseSetContent(expr)
 	if err != nil {
 		return Set{}, nil, err
 	}
@@ -204,6 +204,37 @@ func parseSet(in *expr) (Set, *expr, error) {
 	return Set{
 		Update: row,
 	}, expr, nil
+}
+
+func parseSetContent(in *expr) (object.Row, *expr, error) {
+	out := make(object.Row)
+	it := in
+	for {
+		cur, exp, err := it.read(3,
+			sequence(
+				is(lexer.KindIdentifier),
+				is(lexer.KindEqual),
+				oneOf(is(lexer.KindNumberLiteral), is(lexer.KindStringLiteral)),
+			),
+		)
+		if err != nil {
+			return nil, nil, err
+		}
+		out[cur[0].Value.(string)] = cur[2].Value
+		it = exp
+
+		cur, exp, err = it.r(1)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		if cur[0].Kind != lexer.KindComma {
+			break
+		}
+		it = exp
+	}
+
+	return out, it, nil
 }
 
 func parseCreateTable(in *expr) (CreateTable, *expr, error) {

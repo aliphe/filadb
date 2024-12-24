@@ -42,6 +42,14 @@ func Test_Run(t *testing.T) {
 					given: "SELECT email, id, * FROM users where id = 2;",
 					want:  strings.Join([]string{"email,id,id,email", "tast@test.com,2,2,tast@test.com", ">"}, "\n"),
 				},
+				{
+					given: "UPDATE users SET email = 'new@email.com' WHERE id = 2;",
+					want:  strings.Join([]string{"UPDATE 1", ">"}, "\n"),
+				},
+				{
+					given: "SELECT * FROM users where id = 2;",
+					want:  strings.Join([]string{"id,email", "2,new@email.com", ">"}, "\n"),
+				},
 			},
 		},
 	}
