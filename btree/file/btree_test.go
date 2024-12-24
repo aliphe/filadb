@@ -2,6 +2,7 @@ package file
 
 import (
 	"context"
+	"os"
 	"strconv"
 	"testing"
 
@@ -15,15 +16,16 @@ func Test_Btree(t *testing.T) {
 	}{
 		"order 3": {
 			order: 3,
-			given: []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20},
+			given: []int{5, 4, 3, 2, 1, 0, 2, 4, 2, 1},
 		},
 	}
 
-	b, err := New[int]()
-	defer b.Close()
+	b, err := New[int](WithPath(".testdb"))
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer b.Close()
+	defer os.RemoveAll(".testdb")
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {

@@ -230,6 +230,7 @@ func (b *BTree[K]) findInNode(ctx context.Context, n *Node[K], k K) (*Node[K], e
 	for _, r := range n.Refs() {
 		if r.To == nil || *r.To > k {
 			ref = r
+			break
 		}
 	}
 
@@ -244,27 +245,9 @@ func (b *BTree[K]) findInNode(ctx context.Context, n *Node[K], k K) (*Node[K], e
 	return node, nil
 }
 
-func exists[K Key](keys []*KeyVal[K], refs []*Ref[K], key K) bool {
-	for _, k := range keys {
-		if k.Key == key {
-			return true
-		}
-	}
-	for _, r := range refs {
-		if r.From == &key || r.To == &key {
-			return true
-		}
-	}
-
-	return false
-}
-
 func (b *BTree[K]) insert(ctx context.Context, n *Node[K], kv *KeyVal[K], update bool) ([]*Ref[K], error) {
 	var keys []*KeyVal[K] = n.Keys()
 	var refs []*Ref[K] = n.Refs()
-	if !update && exists(keys, refs, kv.Key) {
-		return nil, fmt.Errorf("key %v: %w", kv.Key, storage.ErrDuplicate)
-	}
 
 	var movingUp []*Ref[K]
 	if !n.Leaf() {
@@ -282,7 +265,17 @@ func (b *BTree[K]) insert(ctx context.Context, n *Node[K], kv *KeyVal[K], update
 			movingUp = nil
 		}
 	} else {
-		keys = dedup(append(n.Keys(), kv))
+		keys = append(n.Keys(), kv)
+		slices.SortFunc(keys, func(a, b *KeyVal[K]) int {
+			switch {
+			case a.Key < b.Key:
+				return -1
+			case a.Key > b.Key:
+				return 1
+			default:
+				return 0
+			}
+		})
 	}
 
 	if len(keys) > b.order {
@@ -340,23 +333,6 @@ func (b *BTree[K]) insert(ctx context.Context, n *Node[K], kv *KeyVal[K], update
 	n.SetRefs(refs)
 	b.store.Save(ctx, n)
 	return movingUp, nil
-}
-
-func dedup[K Key](kv []*KeyVal[K]) []*KeyVal[K] {
-	m := make(map[K]*KeyVal[K])
-	for _, kv := range kv {
-		m[kv.Key] = kv
-	}
-
-	out := make([]*KeyVal[K], 0, len(m))
-	for _, kv := range m {
-		out = append(out, kv)
-	}
-
-	slices.SortFunc(out, func(a, b *KeyVal[K]) int {
-		return cmp.Compare(a.Key, b.Key)
-	})
-	return out
 }
 
 func insertRefs[K Key](refs []*Ref[K], new []*Ref[K]) []*Ref[K] {

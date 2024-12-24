@@ -56,21 +56,11 @@ func (n *Node[K]) Value(key K) (*KeyVal[K], bool) {
 }
 
 func (n *Node[K]) Refs() []*Ref[K] {
-	refs := make([]*Ref[K], 0, len(n.refs))
-	for _, r := range n.refs {
-		refs = append(refs, r)
-	}
-
-	return refs
+	return n.refs
 }
 
 func (n *Node[K]) Keys() []*KeyVal[K] {
-	keys := make([]*KeyVal[K], 0, len(n.keys))
-	for _, k := range n.keys {
-		keys = append(keys, k)
-	}
-
-	return keys
+	return n.keys
 }
 
 func (n *Node[K]) SetKeys(keys []*KeyVal[K]) {
