@@ -65,21 +65,25 @@ func (c *Client) UpdateRow(ctx context.Context, t object.Table, r object.Row) er
 	return nil
 }
 
+// GetRow gets a row given the provided ID.
+// It will be deprecated as soon as indexes get first-class support.
 func (c *Client) GetRow(ctx context.Context, t object.Table, id object.ID, dst *object.Row) error {
 	sch, err := c.schema.Get(ctx, t)
 	if err != nil {
 		return err
 	}
 
-	bs, ok, err := c.store.Get(ctx, string(t), string(id))
+	bs, err := c.store.Get(ctx, string(t), string(id))
 	if err != nil {
 		return err
 	}
-	if !ok {
+	// if we did not find the row, or found many for the given id, return nothing
+	// the case "more than one" should not happen
+	if len(bs) != 1 {
 		return nil
 	}
 
-	err = sch.Marshaler().Unmarshal(bs, dst)
+	err = sch.Marshaler().Unmarshal(bs[0], dst)
 	if err != nil {
 		return err
 	}

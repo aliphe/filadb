@@ -146,23 +146,20 @@ func (b *BTree[K]) set(ctx context.Context, node string, key K, val []byte, upda
 
 }
 
-func (b *BTree[K]) Get(ctx context.Context, node string, key K) ([]byte, bool, error) {
+func (b *BTree[K]) Get(ctx context.Context, node string, key K) ([][]byte, error) {
 	root, ok, err := b.root(ctx, NodeID(node))
 	if err != nil {
-		return nil, false, fmt.Errorf("acquire root: %w", err)
+		return nil, fmt.Errorf("acquire root: %w", err)
 	}
 	if !ok {
-		return nil, false, storage.ErrTableNotFound
+		return nil, storage.ErrTableNotFound
 	}
 
-	kv, ok, err := b.get(ctx, root, key)
+	got, err := b.get(ctx, root, key)
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
-	if !ok {
-		return nil, false, nil
-	}
-	return kv.Val, true, nil
+	return got, nil
 }
 
 func (b *BTree[K]) Scan(ctx context.Context, node string) ([][]byte, error) {
@@ -207,19 +204,20 @@ func (b *BTree[K]) dump(ctx context.Context, n *Node[K]) ([][]byte, error) {
 	return out, nil
 }
 
-func (b *BTree[K]) get(ctx context.Context, n *Node[K], k K) (*KeyVal[K], bool, error) {
+func (b *BTree[K]) get(ctx context.Context, n *Node[K], k K) ([][]byte, error) {
 	if n.Leaf() {
+		var found [][]byte
 		for _, kv := range n.Keys() {
 			if kv.Key == k {
-				return kv, true, nil
+				found = append(found, kv.Val)
 			}
 		}
-		return nil, false, nil
+		return found, nil
 	}
 
 	sub, err := b.findInNode(ctx, n, k)
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
 
 	return b.get(ctx, sub, k)
@@ -265,7 +263,15 @@ func (b *BTree[K]) insert(ctx context.Context, n *Node[K], kv *KeyVal[K], update
 			movingUp = nil
 		}
 	} else {
-		keys = append(n.Keys(), kv)
+		if update {
+			for i := range n.keys {
+				if n.keys[i].Key == kv.Key {
+					n.keys[i].Val = kv.Val
+				}
+			}
+		} else {
+			keys = append(n.Keys(), kv)
+		}
 		slices.SortFunc(keys, func(a, b *KeyVal[K]) int {
 			switch {
 			case a.Key < b.Key:
