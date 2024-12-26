@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/aliphe/filadb/db/index"
 	"github.com/aliphe/filadb/db/object"
@@ -17,6 +18,7 @@ type schemaStore interface {
 type indexStore interface {
 	Scan(ctx context.Context, table object.Table) ([]*index.Index, error)
 	Create(ctx context.Context, idx *index.Index) error
+	Index(ctx context.Context, idx *index.Index, rows ...object.Row) error
 }
 
 type Client struct {
@@ -57,14 +59,13 @@ func (c *Client) InsertRow(ctx context.Context, t object.Table, r object.Row) er
 
 	idxs, err := c.index.Scan(ctx, t)
 	if err != nil {
-		return err
+		return fmt.Errorf("fetch indexes: %w", err)
 	}
 
 	for _, idx := range idxs {
-		key := idx.Key(r)
-		err := c.store.Add(ctx, string(idx.Name), string(key), []byte(r.ObjectID()))
+		err = c.index.Index(ctx, idx, r)
 		if err != nil {
-			return err
+			return fmt.Errorf("index row: %w", err)
 		}
 	}
 
@@ -167,7 +168,18 @@ func (c *Client) Shape(ctx context.Context, t object.Table) ([]string, error) {
 func (c *Client) CreateIndex(ctx context.Context, idx *index.Index) error {
 	err := c.index.Create(ctx, idx)
 	if err != nil {
-		return err
+		return fmt.Errorf("create index: %w", err)
+	}
+
+	var rows []object.Row
+	err = c.Scan(ctx, idx.Table, &rows)
+	if err != nil {
+		return fmt.Errorf("retrieve rows to index: %w", err)
+	}
+
+	err = c.index.Index(ctx, idx, rows...)
+	if err != nil {
+		return fmt.Errorf("index rows: %w", err)
 	}
 
 	return nil
