@@ -7,7 +7,7 @@ import (
 	"github.com/aliphe/filadb/btree/file"
 	"github.com/aliphe/filadb/cmd/query/app/tcp"
 	"github.com/aliphe/filadb/db"
-	"github.com/aliphe/filadb/db/schema/registry"
+	"github.com/aliphe/filadb/db/system"
 	"github.com/aliphe/filadb/query/sql"
 )
 
@@ -40,12 +40,10 @@ func Run(opts ...Option) error {
 	}()
 	btree := btree.New(fileStore)
 
-	schema, err := registry.New(btree)
-	if err != nil {
-		return err
-	}
+	schema := system.NewSchemaRegistry(btree)
+	index := system.NewIndexRegistry(btree)
 
-	db := db.NewClient(btree, schema)
+	db := db.NewClient(btree, schema, index)
 	q := sql.NewRunner(db)
 
 	handler := tcp.New(q)
