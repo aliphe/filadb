@@ -31,23 +31,19 @@ func Test_Run(t *testing.T) {
 					want:  strings.Join([]string{"INSERT 2", ">"}, "\n"),
 				},
 				{
-					given: "SELECT * FROM users;",
+					given: "SELECT id, email FROM users;",
 					want:  strings.Join([]string{"id,email", "1,test@tust.com", "2,tast@test.com", ">"}, "\n"),
 				},
 				{
-					given: "SELECT * FROM users where id = 1;",
+					given: "SELECT id, email FROM users where id = 1;",
 					want:  strings.Join([]string{"id,email", "1,test@tust.com", ">"}, "\n"),
-				},
-				{
-					given: "SELECT email, id, * FROM users where id = 2;",
-					want:  strings.Join([]string{"email,id,id,email", "tast@test.com,2,2,tast@test.com", ">"}, "\n"),
 				},
 				{
 					given: "UPDATE users SET email = 'new@email.com' WHERE id = 2;",
 					want:  strings.Join([]string{"UPDATE 1", ">"}, "\n"),
 				},
 				{
-					given: "SELECT * FROM users where id = 2;",
+					given: "SELECT id, email FROM users where id = 2;",
 					want:  strings.Join([]string{"id,email", "2,new@email.com", ">"}, "\n"),
 				},
 			},

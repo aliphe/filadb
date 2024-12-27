@@ -2,6 +2,7 @@ package system
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"github.com/aliphe/filadb/db/index"
@@ -33,6 +34,9 @@ func (ir *IndexRegistry) Scan(ctx context.Context, t object.Table) ([]*index.Ind
 	var raw []internalTableIndexes
 	err := ir.indexes.Scan(ctx, &raw)
 	if err != nil {
+		if errors.Is(err, storage.ErrTableNotFound) {
+			return nil, nil
+		}
 		return nil, err
 	}
 
