@@ -1,6 +1,10 @@
 package parser
 
-import "github.com/aliphe/filadb/query/sql/lexer"
+import (
+	"io"
+
+	"github.com/aliphe/filadb/query/sql/lexer"
+)
 
 type expr struct {
 	tokens []*lexer.Token
@@ -26,7 +30,7 @@ func clearWhitespaces(tokens []*lexer.Token) []*lexer.Token {
 
 func (e *expr) r(n int) ([]*lexer.Token, *expr, error) {
 	if n > len(e.tokens) {
-		return nil, nil, ErrEndOfInput
+		return nil, nil, io.EOF
 	}
 	return e.tokens[0:n], &expr{
 		tokens: e.tokens[n:],

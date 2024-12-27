@@ -48,6 +48,18 @@ func Test_Run(t *testing.T) {
 				},
 			},
 		},
+		"With index": {
+			scenario: []step{
+				{
+					given: "CREATE TABLE users (id NUMBER, email TEXT);",
+					want:  strings.Join([]string{"CREATE TABLE", ">"}, "\n"),
+				},
+				{
+					given: "CREATE INDEX user_email ON users(email);",
+					want:  strings.Join([]string{"CREATE INDEX", ">"}, "\n"),
+				},
+			},
+		},
 	}
 
 	for name, tc := range tests {

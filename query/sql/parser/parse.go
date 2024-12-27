@@ -10,10 +10,6 @@ import (
 	"github.com/aliphe/filadb/query/sql/lexer"
 )
 
-var (
-	ErrEndOfInput = errors.New("unexpected end of input")
-)
-
 type UnexpectedTokenError struct {
 	token *lexer.Token
 	want  []lexer.Kind
@@ -30,23 +26,42 @@ func (u UnexpectedTokenError) Error() string {
 type QueryType string
 
 const (
-	QueryTypeSelect      QueryType = "select"
-	QueryTypeInsert      QueryType = "insert"
-	QueryTypeUpdate      QueryType = "update"
-	QueryTypeCreateTable QueryType = "create table"
+	QueryTypeSelect QueryType = "select"
+	QueryTypeInsert QueryType = "insert"
+	QueryTypeUpdate QueryType = "update"
+	QueryTypeCreate QueryType = "create"
+)
+
+type CreateType string
+
+const (
+	CreateTypeTable CreateType = "create"
+	CreateTypeIndex CreateType = "index"
 )
 
 type SQLQuery struct {
-	Type        QueryType
-	Select      Select
-	Insert      Insert
-	Update      Update
+	Type   QueryType
+	Select Select
+	Insert Insert
+	Update Update
+	Create Create
+}
+
+type Create struct {
+	Type        CreateType
 	CreateTable CreateTable
+	CreateIndex CreateIndex
 }
 
 type CreateTable struct {
 	Name    object.Table
 	Columns []schema.Column
+}
+
+type CreateIndex struct {
+	Name   string
+	Table  object.Table
+	Fields []Field
 }
 
 type Insert struct {
@@ -132,19 +147,19 @@ func Parse(tokens []*lexer.Token) (SQLQuery, error) {
 		out.Type = QueryTypeUpdate
 		expr = exp
 	} else if cur[0].Kind == lexer.KindCreate {
-		create, exp, err := parseCreateTable(expr)
+		create, exp, err := parseCreate(expr)
 		if err != nil {
 			return SQLQuery{}, err
 		}
-		out.CreateTable = create
-		out.Type = QueryTypeCreateTable
+		out.Create = create
+		out.Type = QueryTypeCreate
 		expr = exp
 	} else {
 		return SQLQuery{}, newUnexpectedTokenError(cur[0], lexer.KindCreate, lexer.KindSelect, lexer.KindInsert)
 	}
 	_, exp, err := expr.read(1, is(lexer.KindSemiColumn))
 	if err != nil {
-		if !errors.Is(err, ErrEndOfInput) {
+		if !errors.Is(err, io.EOF) {
 			return SQLQuery{}, err
 		}
 	} else {
@@ -237,15 +252,50 @@ func parseSetContent(in *expr) (object.Row, *expr, error) {
 	return out, it, nil
 }
 
+func parseCreate(in *expr) (Create, *expr, error) {
+	var out Create
+
+	cur, expr, err := in.read(1, oneOf(is(lexer.KindTable), is(lexer.KindIndex)))
+	if err != nil {
+		return out, nil, err
+	}
+
+	switch cur[0].Kind {
+	case lexer.KindTable:
+		{
+			ct, exp, err := parseCreateTable(expr)
+			if err != nil {
+				return out, nil, err
+			}
+
+			out.Type = CreateTypeTable
+			out.CreateTable = ct
+			expr = exp
+		}
+	case lexer.KindIndex:
+		{
+			ci, exp, err := parseCreateIndex(expr)
+			if err != nil {
+				return Create{}, nil, err
+			}
+			out.Type = CreateTypeIndex
+			out.CreateIndex = ci
+			expr = exp
+		}
+	}
+
+	return out, expr, nil
+}
+
 func parseCreateTable(in *expr) (CreateTable, *expr, error) {
-	cur, expr, err := in.read(2, sequence(is(lexer.KindTable), is(lexer.KindIdentifier)))
+	cur, expr, err := in.read(1, is(lexer.KindIdentifier))
 	if err != nil {
 		return CreateTable{}, nil, err
 	}
 
-	name, ok := cur[1].Value.(string)
+	name, ok := cur[0].Value.(string)
 	if !ok {
-		return CreateTable{}, nil, fmt.Errorf("invalid table name %v", cur[1].Value)
+		return CreateTable{}, nil, fmt.Errorf("invalid table name %v", cur[0].Value)
 	}
 
 	cols, expr, err := parseKeyValuePairs(expr)
@@ -255,6 +305,29 @@ func parseCreateTable(in *expr) (CreateTable, *expr, error) {
 	return CreateTable{
 		Name:    object.Table(name),
 		Columns: cols,
+	}, expr, nil
+}
+
+func parseCreateIndex(in *expr) (CreateIndex, *expr, error) {
+	cur, expr, err := in.read(4, sequence(is(lexer.KindIdentifier), is(lexer.KindOn), is(lexer.KindIdentifier), is(lexer.KindOpenParen)))
+	if err != nil {
+		return CreateIndex{}, nil, err
+	}
+
+	fields, expr, err := parseFields(expr)
+	if err != nil {
+		return CreateIndex{}, nil, err
+	}
+
+	_, expr, err = expr.read(1, is(lexer.KindCloseParen))
+	if err != nil {
+		return CreateIndex{}, nil, err
+	}
+
+	return CreateIndex{
+		Name:   cur[0].Value.(string),
+		Table:  object.Table(cur[2].Value.(string)),
+		Fields: fields,
 	}, expr, nil
 }
 
@@ -414,7 +487,7 @@ func parseValues(in *expr, cols []string) ([]object.Row, *expr, error) {
 		is(lexer.KindComma), is(lexer.KindCloseParen),
 	))
 	if err != nil {
-		if errors.Is(err, ErrEndOfInput) {
+		if errors.Is(err, io.EOF) {
 			// return the last one
 			return []object.Row{row}, expr, nil
 		}

@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/aliphe/filadb/db"
+	"github.com/aliphe/filadb/db/index"
 	"github.com/aliphe/filadb/db/object"
 	"github.com/aliphe/filadb/db/schema"
 	"github.com/aliphe/filadb/query/sql/parser"
@@ -52,9 +53,14 @@ func (e *Evaluator) EvalExpr(ctx context.Context, ast parser.SQLQuery) ([]byte, 
 			}
 			return raw("UPDATE " + strconv.Itoa(n)), nil
 		}
-	case parser.QueryTypeCreateTable:
+	case parser.QueryTypeCreate:
 		{
-			return raw("CREATE TABLE"), e.evalCreateTable(ctx, ast.CreateTable)
+			if ast.Create.Type == parser.CreateTypeIndex {
+				return raw("CREATE INDEX"), e.evalCreateIndex(ctx, ast.Create.CreateIndex)
+			} else if ast.Create.Type == parser.CreateTypeTable {
+				return raw("CREATE TABLE"), e.evalCreateTable(ctx, ast.Create.CreateTable)
+			}
+			return nil, nil
 		}
 	default:
 		{
@@ -88,6 +94,19 @@ func (e *Evaluator) evalCreateTable(ctx context.Context, create parser.CreateTab
 	}
 
 	return e.client.CreateSchema(ctx, &sch)
+}
+
+func (e *Evaluator) evalCreateIndex(ctx context.Context, create parser.CreateIndex) error {
+	cols := make([]string, 0, len(create.Fields))
+	for _, f := range create.Fields {
+		cols = append(cols, f.Column)
+	}
+	idx := index.Index{
+		Table:   create.Table,
+		Name:    create.Name,
+		Columns: cols,
+	}
+	return e.client.CreateIndex(ctx, &idx)
 }
 
 func (e *Evaluator) evalSelect(ctx context.Context, sel parser.Select) ([]byte, error) {

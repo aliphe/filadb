@@ -24,7 +24,11 @@ const (
 	KindWhere  Kind = "WHERE"
 	KindAnd    Kind = "AND"
 	KindCreate Kind = "CREATE"
-	KindTable  Kind = "TABLE"
+	KindOn     Kind = "ON"
+
+	// System objects
+	KindTable Kind = "TABLE"
+	KindIndex Kind = "INDEX"
 
 	// SQL types
 	KindNumber Kind = "NUMBER"
@@ -80,7 +84,8 @@ var matchers = []Matcher{
 		for _, tok := range []Kind{
 			KindSelect, KindInsert, KindFrom, KindWhere, KindAnd, KindComma, KindSemiColumn,
 			KindEqual, KindAbove, KindBelow, KindInto, KindOpenParen, KindCloseParen,
-			KindValues, KindTable, KindCreate, KindText, KindNumber, KindUpdate, KindSet,
+			KindValues, KindCreate, KindText, KindNumber, KindUpdate, KindSet, KindOn,
+			KindTable, KindIndex,
 		} {
 			_, ok := strings.CutPrefix(strings.ToLower(s), strings.ToLower(string(tok)))
 			if ok {
