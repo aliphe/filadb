@@ -58,6 +58,10 @@ func Test_Run(t *testing.T) {
 					given: "CREATE INDEX user_email ON users(email);",
 					want:  strings.Join([]string{"CREATE INDEX", ">"}, "\n"),
 				},
+				{
+					given: "INSERT INTO users (id, email) VALUES (1, 'test@indexed.com');",
+					want:  strings.Join([]string{"INSERT 1", ">"}, "\n"),
+				},
 			},
 		},
 	}
