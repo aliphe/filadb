@@ -166,7 +166,11 @@ func (e *Evaluator) evalInsert(ctx context.Context, ins parser.Insert) (int, err
 }
 
 func (e *Evaluator) evalFrom(ctx context.Context, from parser.From) ([]object.Row, error) {
-	id, hasId := idFilter(from.Where)
+	var filters []parser.Filter
+	if from.Where != nil {
+		filters = from.Where.Filters
+	}
+	id, hasId := idFilter(filters...)
 	if hasId {
 		var row object.Row
 		err := e.client.GetRow(ctx, from.Table, id, &row)
@@ -177,7 +181,7 @@ func (e *Evaluator) evalFrom(ctx context.Context, from parser.From) ([]object.Ro
 	}
 
 	var rows []object.Row
-	err := e.client.Scan(ctx, from.Table, &rows)
+	err := e.client.Scan(ctx, from.Table, &rows, filters...)
 	if err != nil {
 		return nil, err
 	}
@@ -189,14 +193,12 @@ func (e *Evaluator) evalFrom(ctx context.Context, from parser.From) ([]object.Ro
 	return rows, nil
 }
 
-func idFilter(where *parser.Where) (object.ID, bool) {
-	if where != nil {
-		for _, f := range where.Filters {
-			if f.Column == "id" && f.Op == parser.OpEqual {
-				v, ok := f.Value.(string)
-				if ok {
-					return object.ID(v), true
-				}
+func idFilter(filters ...parser.Filter) (object.ID, bool) {
+	for _, f := range filters {
+		if f.Column == "id" && f.Op == parser.OpEqual {
+			v, ok := f.Value.(string)
+			if ok {
+				return object.ID(v), true
 			}
 		}
 	}

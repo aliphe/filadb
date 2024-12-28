@@ -14,7 +14,7 @@ var (
 func main() {
 	flag.Parse()
 
-	if *verbose == true {
+	if *verbose {
 		slog.SetLogLoggerLevel(slog.LevelDebug)
 	}
 

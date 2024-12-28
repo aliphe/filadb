@@ -39,3 +39,13 @@ func (i *Index) Key(row object.Row) Key {
 
 	return Key(str)
 }
+
+// Matches returns true if the Index can be used to fetch the row given the filters.
+func (idx *Index) Matches(cols []string) bool {
+	for i, c := range idx.Columns {
+		if i >= len(cols) || c != cols[i] {
+			return false
+		}
+	}
+	return true
+}

@@ -62,6 +62,10 @@ func Test_Run(t *testing.T) {
 					given: "INSERT INTO users (id, email) VALUES (1, 'test@indexed.com');",
 					want:  strings.Join([]string{"INSERT 1", ">"}, "\n"),
 				},
+				{
+					given: "SELECT id FROM users WHERE email = 'test@indexed.com';",
+					want:  strings.Join([]string{"id", "1", ">"}, "\n"),
+				},
 			},
 		},
 	}

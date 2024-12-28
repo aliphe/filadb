@@ -8,6 +8,7 @@ import (
 	"github.com/aliphe/filadb/db/object"
 	"github.com/aliphe/filadb/db/schema"
 	"github.com/aliphe/filadb/db/storage"
+	"github.com/aliphe/filadb/query/sql/parser"
 )
 
 type schemaStore interface {
@@ -117,23 +118,22 @@ func (c *Client) GetRow(ctx context.Context, t object.Table, id object.ID, dst *
 	return nil
 }
 
-func (c *Client) Scan(ctx context.Context, t object.Table, dst *[]object.Row) error {
+func (c *Client) Scan(ctx context.Context, t object.Table, dst *[]object.Row, filters ...parser.Filter) error {
 	sch, err := c.schema.Get(ctx, t)
 	if err != nil {
 		return err
 	}
 
-	// scan table indexes
-	//
-	// find best one (heuristic TBD)
-	//
-	// fetch ids from index (my btree does not handle multi values on same key rn)
-	//
-	// get each row with GetRow
-
-	s, err := c.store.Scan(ctx, string(t))
+	s, err := c.indexScan(ctx, t, filters...)
 	if err != nil {
-		return nil
+		return err
+	}
+	// fallback to full scan
+	if len(s) == 0 {
+		s, err = c.store.Scan(ctx, string(t))
+		if err != nil {
+			return nil
+		}
 	}
 
 	err = sch.Marshaler().UnmarshalBatch(s, dst)
@@ -142,6 +142,52 @@ func (c *Client) Scan(ctx context.Context, t object.Table, dst *[]object.Row) er
 	}
 
 	return nil
+}
+
+// indexScan will attempt to fetch the rows using indexes defined on the table.
+// if none are usable, it will return an empty slice and empty error.
+func (c *Client) indexScan(ctx context.Context, t object.Table, filters ...parser.Filter) ([][]byte, error) {
+	idxs, err := c.index.Scan(ctx, t)
+	if err != nil {
+		return nil, err
+	}
+
+	cols := make([]string, 0, len(filters))
+	for _, f := range filters {
+		cols = append(cols, f.Column)
+	}
+
+	var idx *index.Index
+	for _, i := range idxs {
+		if i.Matches(cols) {
+			idx = i
+			break
+		}
+	}
+	if idx == nil {
+		return nil, nil
+	}
+
+	row := make(object.Row)
+	for _, f := range filters {
+		row[f.Column] = f.Value
+	}
+
+	ids, err := c.store.Get(ctx, string(idx.Name), string(idx.Key(row)))
+	if err != nil {
+		return nil, err
+	}
+	out := make([][]byte, 0, len(ids))
+	// get each row with GetRow
+	for _, id := range ids {
+		s, err := c.store.Get(ctx, string(t), string(id))
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, s[0])
+	}
+
+	return out, nil
 }
 
 /**
@@ -155,6 +201,7 @@ func (c *Client) CreateSchema(ctx context.Context, sch *schema.Schema) error {
 
 	return nil
 }
+
 func (c *Client) Shape(ctx context.Context, t object.Table) ([]string, error) {
 	sch, err := c.schema.Get(ctx, t)
 	if err != nil {
