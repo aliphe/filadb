@@ -11,8 +11,7 @@ type Schema struct {
 
 func (s *Schema) Marshaler() object.Marshaler {
 	return &marshaler{
-		src:    s,
-		schema: toSchema(s),
+		src: s,
 	}
 }
 

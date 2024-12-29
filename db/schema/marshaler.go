@@ -8,8 +8,7 @@ import (
 )
 
 type marshaler struct {
-	src    *Schema
-	schema string
+	src *Schema
 }
 
 func (a *marshaler) Shape() []string {
