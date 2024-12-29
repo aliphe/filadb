@@ -25,6 +25,7 @@ const (
 	KindAnd    Kind = "AND"
 	KindCreate Kind = "CREATE"
 	KindOn     Kind = "ON"
+	KindJoin   Kind = "JOIN"
 
 	// System objects
 	KindTable Kind = "TABLE"
@@ -40,6 +41,7 @@ const (
 	KindNumberLiteral Kind = "NUMBER_LITERAL"
 
 	KindNewLine    Kind = "\n"
+	KindDot        Kind = "."
 	KindComma      Kind = ","
 	KindSemiColumn Kind = ";"
 	KindEOF        Kind = ""
@@ -85,7 +87,7 @@ var matchers = []Matcher{
 			KindSelect, KindInsert, KindFrom, KindWhere, KindAnd, KindComma, KindSemiColumn,
 			KindEqual, KindAbove, KindBelow, KindInto, KindOpenParen, KindCloseParen,
 			KindValues, KindCreate, KindText, KindNumber, KindUpdate, KindSet, KindOn,
-			KindTable, KindIndex,
+			KindTable, KindIndex, KindJoin, KindDot,
 		} {
 			_, ok := strings.CutPrefix(strings.ToLower(s), strings.ToLower(string(tok)))
 			if ok {

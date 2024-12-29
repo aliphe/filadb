@@ -38,13 +38,13 @@ func (e *expr) r(n int) ([]*lexer.Token, *expr, error) {
 	}, nil
 }
 
-func (e *expr) read(n int, assertion assertion) ([]*lexer.Token, *expr, error) {
-	toks, expr, err := e.r(n)
+func (e *expr) read(assertions ...assertion) ([]*lexer.Token, *expr, error) {
+	toks, expr, err := e.r(len(assertions))
 	if err != nil {
 		return nil, nil, err
 	}
 
-	err, _ = assertion(toks...)
+	err, _ = sequence(assertions...)(toks...)
 
 	return toks, expr, err
 }

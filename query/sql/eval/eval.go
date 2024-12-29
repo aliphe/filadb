@@ -195,7 +195,7 @@ func (e *Evaluator) evalFrom(ctx context.Context, from parser.From) ([]object.Ro
 
 func idFilter(filters ...parser.Filter) (object.ID, bool) {
 	for _, f := range filters {
-		if f.Column == "id" && f.Op == parser.OpEqual {
+		if f.Field.Column == "id" && f.Op == parser.OpEqual {
 			v, ok := f.Value.(string)
 			if ok {
 				return object.ID(v), true
@@ -218,7 +218,7 @@ func filter(rows []object.Row, f []parser.Filter) []object.Row {
 
 func matches(row object.Row, filters []parser.Filter) bool {
 	for _, f := range filters {
-		if f.Op == parser.OpEqual && row[f.Column] != f.Value {
+		if f.Op == parser.OpEqual && row[f.Field.Table+f.Field.Column] != f.Value {
 			return false
 		}
 	}
