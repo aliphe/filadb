@@ -170,39 +170,17 @@ func (e *Evaluator) evalFrom(ctx context.Context, from parser.From) ([]object.Ro
 	if from.Where != nil {
 		filters = from.Where.Filters
 	}
-	id, hasId := idFilter(filters...)
-	if hasId {
-		var row object.Row
-		err := e.client.GetRow(ctx, from.Table, id, &row)
-		if err != nil {
-			return nil, err
-		}
-		return []object.Row{row}, nil
-	}
+	return e.scan(ctx, from.Table, filters...)
+}
 
+func (e *Evaluator) scan(ctx context.Context, table object.Table, filters ...parser.Filter) ([]object.Row, error) {
 	var rows []object.Row
-	err := e.client.Scan(ctx, from.Table, &rows, filters...)
+	err := e.client.Scan(ctx, table, &rows, filters...)
 	if err != nil {
 		return nil, err
 	}
 
-	if from.Where != nil {
-		return filter(rows, from.Where.Filters), nil
-	}
-
-	return rows, nil
-}
-
-func idFilter(filters ...parser.Filter) (object.ID, bool) {
-	for _, f := range filters {
-		if f.Field.Column == "id" && f.Op == parser.OpEqual {
-			v, ok := f.Value.(string)
-			if ok {
-				return object.ID(v), true
-			}
-		}
-	}
-	return "", false
+	return filter(rows, filters), nil
 }
 
 func filter(rows []object.Row, f []parser.Filter) []object.Row {
@@ -218,7 +196,7 @@ func filter(rows []object.Row, f []parser.Filter) []object.Row {
 
 func matches(row object.Row, filters []parser.Filter) bool {
 	for _, f := range filters {
-		if f.Op == parser.OpEqual && row[f.Field.Table+f.Field.Column] != f.Value {
+		if f.Op == parser.OpEqual && row[f.Field.Table+f.Field.Column] != f.Value.Value {
 			return false
 		}
 	}

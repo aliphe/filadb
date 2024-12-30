@@ -112,13 +112,30 @@ type Where struct {
 type Filter struct {
 	Field Field
 	Op    Op
-	Value interface{}
+	Value FilterValue
 }
+
+type FilterValue struct {
+	Type      FilterType
+	Reference Field
+	Value     interface{}
+}
+
+type FilterType int
+
+const (
+	FilterTypeLitteral = iota + 1
+	FilterTypeReference
+)
 
 type Op int
 
 const (
-	OpEqual = iota
+	OpEqual = iota + 1
+	OpLessThan
+	OpLessThanEqual
+	OpMoreThan
+	OpMoreThanEqual
 )
 
 func Parse(tokens []*lexer.Token) (SQLQuery, error) {
@@ -662,6 +679,7 @@ func parseJoin(in *expr) (*Join, *expr, error) {
 		On: JoinOn{
 			Left:  *left,
 			Right: *right,
+			Op:    OpEqual,
 		},
 	}, expr, nil
 }
@@ -713,6 +731,9 @@ func parseFilter(in *expr) (Filter, *expr, error) {
 	return Filter{
 		Field: *field,
 		Op:    OpEqual,
-		Value: cur[1].Value,
+		Value: FilterValue{
+			Type:  FilterTypeLitteral,
+			Value: cur[1].Value,
+		},
 	}, expr, nil
 }

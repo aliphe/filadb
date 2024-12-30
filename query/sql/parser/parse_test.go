@@ -39,15 +39,21 @@ func Test_Parse(t *testing.T) {
 									Field: Field{
 										Column: "id",
 									},
-									Op:    OpEqual,
-									Value: "1",
+									Op: OpEqual,
+									Value: FilterValue{
+										Type:  FilterTypeLitteral,
+										Value: "1",
+									},
 								},
 								{
 									Field: Field{
 										Column: "name",
 									},
-									Op:    OpEqual,
-									Value: "john",
+									Op: OpEqual,
+									Value: FilterValue{
+										Type:  FilterTypeLitteral,
+										Value: "john",
+									},
 								},
 							},
 						},
@@ -75,16 +81,22 @@ func Test_Parse(t *testing.T) {
 										Table:  "posts",
 										Column: "label",
 									},
-									Op:    OpEqual,
-									Value: "public",
+									Op: OpEqual,
+									Value: FilterValue{
+										Type:  FilterTypeLitteral,
+										Value: "public",
+									},
 								},
 								{
 									Field: Field{
 										Table:  "users",
 										Column: "name",
 									},
-									Op:    OpEqual,
-									Value: "bob",
+									Op: OpEqual,
+									Value: FilterValue{
+										Type:  FilterTypeLitteral,
+										Value: "bob",
+									},
 								},
 							},
 						},
