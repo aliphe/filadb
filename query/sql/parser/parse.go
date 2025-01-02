@@ -85,13 +85,7 @@ type Select struct {
 
 type Join struct {
 	Table object.Table
-	On    JoinOn
-}
-
-type JoinOn struct {
-	Left  Field
-	Right Field
-	Op    Op
+	On    []Filter
 }
 
 type Field struct {
@@ -106,22 +100,22 @@ type From struct {
 }
 
 type Filter struct {
-	Field Field
+	Left  Value
 	Op    Op
-	Value FilterValue
+	Right Value
 }
 
-type FilterValue struct {
-	Type      FilterType
+type Value struct {
+	Type      ValueType
 	Reference Field
 	Value     interface{}
 }
 
-type FilterType int
+type ValueType int
 
 const (
-	FilterTypeLitteral = iota + 1
-	FilterTypeReference
+	ValueTypeLitteral ValueType = iota + 1
+	ValueTypeReference
 )
 
 type Op int
@@ -570,6 +564,10 @@ func parseFields(in *expr) ([]Field, *expr, error) {
 	return fields, expr, nil
 }
 
+func parseValue(in *expr) (*Field, *expr, error) {
+	return nil, nil, nil
+}
+
 func parseField(in *expr) (*Field, *expr, error) {
 	cur, expr, err := in.read(is(lexer.KindIdentifier))
 	if err != nil {
@@ -645,38 +643,19 @@ func parseJoin(in *expr) (*Join, *expr, error) {
 		return nil, in, nil
 	}
 
-	_, expr, err = expr.read(
+	cur, expr, err := expr.read(
 		is(lexer.KindIdentifier),
 		is(lexer.KindOn),
 	)
-	if err != nil {
-		return nil, nil, err
-	}
 
-	left, expr, err := parseField(expr)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	_, expr, err = expr.read(
-		is(lexer.KindEqual),
-	)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	right, expr, err := parseField(expr)
+	filters, expr, err := parseFilters(expr)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	return &Join{
-		Table: object.Table(left.Table),
-		On: JoinOn{
-			Left:  *left,
-			Right: *right,
-			Op:    OpEqual,
-		},
+		Table: object.Table(cur[0].Value.(string)),
+		On:    filters,
 	}, expr, nil
 }
 
@@ -686,7 +665,11 @@ func parseWhere(in *expr) ([]Filter, *expr, error) {
 		return nil, in, nil
 	}
 
-	filter, expr, err := parseFilter(expr)
+	return parseFilters(expr)
+}
+
+func parseFilters(in *expr) ([]Filter, *expr, error) {
+	filter, expr, err := parseFilter(in)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -709,25 +692,43 @@ func parseWhere(in *expr) ([]Filter, *expr, error) {
 }
 
 func parseFilter(in *expr) (Filter, *expr, error) {
-	field, expr, err := parseField(in)
+	left, expr, err := parseField(in)
 	if err != nil {
 		return Filter{}, nil, err
 	}
 
 	cur, expr, err := expr.read(
-		is(lexer.KindEqual),
-		oneOf(is(lexer.KindNumberLiteral), is(lexer.KindStringLiteral)),
+		oneOf(
+			is(lexer.KindEqual),
+			is(lexer.KindAbove),
+			is(lexer.KindBelow),
+		),
 	)
 	if err != nil {
 		return Filter{}, nil, err
 	}
 
+	var op Op
+	switch cur[0].Kind {
+	case lexer.KindEqual:
+		op = OpEqual
+	case lexer.KindAbove:
+		op = OpMoreThan
+	case lexer.KindBelow:
+		op = OpLessThan
+	}
+
+	right, expr, err := parseField(in)
+	if err != nil {
+		return Filter{}, nil, err
+	}
+
 	return Filter{
-		Field: *field,
-		Op:    OpEqual,
-		Value: FilterValue{
-			Type:  FilterTypeLitteral,
-			Value: cur[1].Value,
+		Left: Value{
+			Type:      ValueTypeReference,
+			Reference: Field{},
 		},
+		Op:    op,
+		Right: *right,
 	}, expr, nil
 }

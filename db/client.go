@@ -154,7 +154,7 @@ func (c *Client) indexScan(ctx context.Context, t object.Table, filters ...parse
 
 	cols := make([]string, 0, len(filters))
 	for _, f := range filters {
-		cols = append(cols, f.Field.Column)
+		cols = append(cols, f.Left.Column)
 	}
 
 	var idx *index.Index
@@ -170,7 +170,7 @@ func (c *Client) indexScan(ctx context.Context, t object.Table, filters ...parse
 
 	row := make(object.Row)
 	for _, f := range filters {
-		row[f.Field.Column] = f.Value
+		row[f.Left.Column] = f.Right.
 	}
 
 	ids, err := c.store.Get(ctx, string(idx.Name), string(idx.Key(row)))

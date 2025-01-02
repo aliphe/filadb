@@ -60,7 +60,10 @@ func Test_Parse(t *testing.T) {
 			},
 		},
 		{
-			given: "SELECT posts.name FROM users JOIN posts ON posts.user_id = users.id WHERE posts.label = 'public' and users.name = 'bob';",
+			given: `
+				SELECT posts.name FROM users
+				JOIN posts ON posts.user_id = users.id
+				WHERE posts.label = 'public' and users.name = 'bob';`,
 			want: SQLQuery{
 				Type: QueryTypeSelect,
 				Select: Select{
@@ -99,15 +102,20 @@ func Test_Parse(t *testing.T) {
 						Joins: []Join{
 							{
 								Table: "posts",
-								On: JoinOn{
-									Op: OpEqual,
-									Left: Field{
-										Table:  "posts",
-										Column: "user_id",
-									},
-									Right: Field{
-										Table:  "users",
-										Column: "id",
+								On: []Filter{
+									{
+										Field: Field{
+											Table:  "posts",
+											Column: "user_id",
+										},
+										Op: OpEqual,
+										Value: FilterValue{
+											Type: FilterTypeReference,
+											Reference: Field{
+												Table:  "users",
+												Column: "id",
+											},
+										},
 									},
 								},
 							},

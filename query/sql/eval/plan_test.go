@@ -54,4 +54,34 @@ func Test_eval(t *testing.T) {
 		},
 	}
 
+	// tests := []struct {
+	// 	given parser.Select
+	// 	want  step
+	// }{
+	// 	{
+	// 		given: parser.Select{
+	// 			From: parser.From{
+	// 				Table: "users",
+	// 				Where: []parser.Filter{
+	// 					{
+	// 						Field: parser.Field{
+	// 							Column: "age",
+	// 						},
+	// 						Op: parser.OpMoreThan,
+	// 						Value: parser.FilterValue{
+	// 							Type:  parser.FilterTypeLitteral,
+	// 							Value: 21,
+	// 						},
+	// 					},
+	// 				},
+	// 				Joins: []parser.Join{
+	// 					{
+	// 						Table:
+	// 					}
+	// 				},
+	// 			},
+	// 		},
+	// 	},
+	// }
+
 }
