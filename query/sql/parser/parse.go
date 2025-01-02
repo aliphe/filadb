@@ -101,12 +101,8 @@ type Field struct {
 
 type From struct {
 	Table object.Table
-	Where *Where
+	Where []Filter
 	Joins []Join
-}
-
-type Where struct {
-	Filters []Filter
 }
 
 type Filter struct {
@@ -684,7 +680,7 @@ func parseJoin(in *expr) (*Join, *expr, error) {
 	}, expr, nil
 }
 
-func parseWhere(in *expr) (*Where, *expr, error) {
+func parseWhere(in *expr) ([]Filter, *expr, error) {
 	_, expr, err := in.read(is(lexer.KindWhere))
 	if err != nil {
 		return nil, in, nil
@@ -709,9 +705,7 @@ func parseWhere(in *expr) (*Where, *expr, error) {
 		expr = exp
 	}
 
-	return &Where{
-		Filters: filters,
-	}, expr, nil
+	return filters, expr, nil
 }
 
 func parseFilter(in *expr) (Filter, *expr, error) {

@@ -168,7 +168,7 @@ func (e *Evaluator) evalInsert(ctx context.Context, ins parser.Insert) (int, err
 func (e *Evaluator) evalFrom(ctx context.Context, from parser.From) ([]object.Row, error) {
 	var filters []parser.Filter
 	if from.Where != nil {
-		filters = from.Where.Filters
+		filters = from.Where
 	}
 	return e.scan(ctx, from.Table, filters...)
 }

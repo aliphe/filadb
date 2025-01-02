@@ -33,27 +33,25 @@ func Test_Parse(t *testing.T) {
 					Fields: []Field{{Column: "*"}},
 					From: From{
 						Table: "USERS",
-						Where: &Where{
-							Filters: []Filter{
-								{
-									Field: Field{
-										Column: "id",
-									},
-									Op: OpEqual,
-									Value: FilterValue{
-										Type:  FilterTypeLitteral,
-										Value: "1",
-									},
+						Where: []Filter{
+							{
+								Field: Field{
+									Column: "id",
 								},
-								{
-									Field: Field{
-										Column: "name",
-									},
-									Op: OpEqual,
-									Value: FilterValue{
-										Type:  FilterTypeLitteral,
-										Value: "john",
-									},
+								Op: OpEqual,
+								Value: FilterValue{
+									Type:  FilterTypeLitteral,
+									Value: "1",
+								},
+							},
+							{
+								Field: Field{
+									Column: "name",
+								},
+								Op: OpEqual,
+								Value: FilterValue{
+									Type:  FilterTypeLitteral,
+									Value: "john",
 								},
 							},
 						},
@@ -74,29 +72,27 @@ func Test_Parse(t *testing.T) {
 					},
 					From: From{
 						Table: "users",
-						Where: &Where{
-							Filters: []Filter{
-								{
-									Field: Field{
-										Table:  "posts",
-										Column: "label",
-									},
-									Op: OpEqual,
-									Value: FilterValue{
-										Type:  FilterTypeLitteral,
-										Value: "public",
-									},
+						Where: []Filter{
+							{
+								Field: Field{
+									Table:  "posts",
+									Column: "label",
 								},
-								{
-									Field: Field{
-										Table:  "users",
-										Column: "name",
-									},
-									Op: OpEqual,
-									Value: FilterValue{
-										Type:  FilterTypeLitteral,
-										Value: "bob",
-									},
+								Op: OpEqual,
+								Value: FilterValue{
+									Type:  FilterTypeLitteral,
+									Value: "public",
+								},
+							},
+							{
+								Field: Field{
+									Table:  "users",
+									Column: "name",
+								},
+								Op: OpEqual,
+								Value: FilterValue{
+									Type:  FilterTypeLitteral,
+									Value: "bob",
 								},
 							},
 						},
