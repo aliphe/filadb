@@ -35,22 +35,28 @@ func Test_Parse(t *testing.T) {
 						Table: "USERS",
 						Where: []Filter{
 							{
-								Field: Field{
-									Column: "id",
+								Left: Value{
+									Type: ValueTypeReference,
+									Reference: Field{
+										Column: "id",
+									},
 								},
 								Op: OpEqual,
-								Value: FilterValue{
-									Type:  FilterTypeLitteral,
+								Right: Value{
+									Type:  ValueTypeLitteral,
 									Value: "1",
 								},
 							},
 							{
-								Field: Field{
-									Column: "name",
+								Left: Value{
+									Type: ValueTypeReference,
+									Reference: Field{
+										Column: "name",
+									},
 								},
 								Op: OpEqual,
-								Value: FilterValue{
-									Type:  FilterTypeLitteral,
+								Right: Value{
+									Type:  ValueTypeLitteral,
 									Value: "john",
 								},
 							},
@@ -77,24 +83,30 @@ func Test_Parse(t *testing.T) {
 						Table: "users",
 						Where: []Filter{
 							{
-								Field: Field{
-									Table:  "posts",
-									Column: "label",
+								Left: Value{
+									Type: ValueTypeReference,
+									Reference: Field{
+										Table:  "posts",
+										Column: "label",
+									},
 								},
 								Op: OpEqual,
-								Value: FilterValue{
-									Type:  FilterTypeLitteral,
+								Right: Value{
+									Type:  ValueTypeLitteral,
 									Value: "public",
 								},
 							},
 							{
-								Field: Field{
-									Table:  "users",
-									Column: "name",
+								Left: Value{
+									Type: ValueTypeReference,
+									Reference: Field{
+										Table:  "users",
+										Column: "name",
+									},
 								},
 								Op: OpEqual,
-								Value: FilterValue{
-									Type:  FilterTypeLitteral,
+								Right: Value{
+									Type:  ValueTypeLitteral,
 									Value: "bob",
 								},
 							},
@@ -104,13 +116,16 @@ func Test_Parse(t *testing.T) {
 								Table: "posts",
 								On: []Filter{
 									{
-										Field: Field{
-											Table:  "posts",
-											Column: "user_id",
+										Left: Value{
+											Type: ValueTypeReference,
+											Reference: Field{
+												Table:  "posts",
+												Column: "user_id",
+											},
 										},
 										Op: OpEqual,
-										Value: FilterValue{
-											Type: FilterTypeReference,
+										Right: Value{
+											Type: ValueTypeReference,
 											Reference: Field{
 												Table:  "users",
 												Column: "id",

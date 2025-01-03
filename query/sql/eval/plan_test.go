@@ -16,12 +16,15 @@ func Test_eval(t *testing.T) {
 				table: "users",
 				filters: []parser.Filter{
 					{
-						Field: parser.Field{
-							Column: "age",
+						Left: parser.Value{
+							Type: parser.ValueTypeReference,
+							Reference: parser.Field{
+								Column: "age",
+							},
 						},
 						Op: parser.OpMoreThan,
-						Value: parser.FilterValue{
-							Type:  parser.FilterTypeLitteral,
+						Right: parser.Value{
+							Type:  parser.ValueTypeLitteral,
 							Value: 21,
 						},
 					},
@@ -35,12 +38,15 @@ func Test_eval(t *testing.T) {
 						table: "posts",
 						filters: []parser.Filter{
 							{
-								Field: parser.Field{
-									Column: "user_id",
+								Left: parser.Value{
+									Type: parser.ValueTypeReference,
+									Reference: parser.Field{
+										Column: "user_id",
+									},
 								},
 								Op: parser.OpEqual,
-								Value: parser.FilterValue{
-									Type: parser.FilterTypeReference,
+								Right: parser.Value{
+									Type: parser.ValueTypeReference,
 									Reference: parser.Field{
 										Table:  "users",
 										Column: "id",

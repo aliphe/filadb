@@ -195,8 +195,13 @@ func filter(rows []object.Row, f []parser.Filter) []object.Row {
 }
 
 func matches(row object.Row, filters []parser.Filter) bool {
+	key := func(v parser.Field) string {
+		return v.Table + "." + v.Column
+	}
+
 	for _, f := range filters {
-		if f.Op == parser.OpEqual && row[f.Field.Table+f.Field.Column] != f.Value.Value {
+		lk := key(f.Left.Reference)
+		if f.Op == parser.OpEqual && row[lk] != f.Right.Value {
 			return false
 		}
 	}

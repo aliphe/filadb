@@ -548,7 +548,7 @@ func parseFields(in *expr) ([]Field, *expr, error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		fields = append(fields, *field)
+		fields = append(fields, field)
 		expr = exp
 
 		_, exp, err = expr.read(
@@ -564,24 +564,56 @@ func parseFields(in *expr) ([]Field, *expr, error) {
 	return fields, expr, nil
 }
 
-func parseValue(in *expr) (*Field, *expr, error) {
-	return nil, nil, nil
+func parseValue(in *expr) (Value, *expr, error) {
+	lit, litExpr, litErr := parseLiteral(in)
+	field, fieldExpr, fieldErr := parseField(in)
+	if litErr != nil && fieldErr != nil {
+		return Value{}, nil, errors.Join(litErr, fieldErr)
+	}
+
+	expr := in
+	var t ValueType
+	if litErr == nil {
+		expr = litExpr
+		t = ValueTypeLitteral
+	} else if fieldErr == nil {
+		expr = fieldExpr
+		t = ValueTypeReference
+	}
+
+	return Value{
+		Type:      t,
+		Reference: field,
+		Value:     lit,
+	}, expr, nil
 }
 
-func parseField(in *expr) (*Field, *expr, error) {
-	cur, expr, err := in.read(is(lexer.KindIdentifier))
+func parseLiteral(in *expr) (interface{}, *expr, error) {
+	cur, expr, err := in.read(oneOf(
+		is(lexer.KindStringLiteral),
+		is(lexer.KindNumberLiteral),
+	))
 	if err != nil {
 		return nil, nil, err
 	}
 
+	return cur[0].Value, expr, err
+}
+
+func parseField(in *expr) (Field, *expr, error) {
+	cur, expr, err := in.read(is(lexer.KindIdentifier))
+	if err != nil {
+		return Field{}, nil, err
+	}
+
 	next, exp, err := expr.read(is(lexer.KindDot), is(lexer.KindIdentifier))
 	if err != nil {
-		return &Field{
+		return Field{
 			Column: cur[0].Value.(string),
 		}, expr, nil
 	}
 
-	return &Field{
+	return Field{
 		Table:  cur[0].Value.(string),
 		Column: next[1].Value.(string),
 	}, exp, nil
@@ -692,7 +724,7 @@ func parseFilters(in *expr) ([]Filter, *expr, error) {
 }
 
 func parseFilter(in *expr) (Filter, *expr, error) {
-	left, expr, err := parseField(in)
+	left, expr, err := parseValue(in)
 	if err != nil {
 		return Filter{}, nil, err
 	}
@@ -718,17 +750,14 @@ func parseFilter(in *expr) (Filter, *expr, error) {
 		op = OpLessThan
 	}
 
-	right, expr, err := parseField(in)
+	right, expr, err := parseValue(in)
 	if err != nil {
 		return Filter{}, nil, err
 	}
 
 	return Filter{
-		Left: Value{
-			Type:      ValueTypeReference,
-			Reference: Field{},
-		},
+		Left:  left,
 		Op:    op,
-		Right: *right,
+		Right: right,
 	}, expr, nil
 }
