@@ -196,7 +196,10 @@ func filter(rows []object.Row, f []parser.Filter) []object.Row {
 
 func matches(row object.Row, filters []parser.Filter) bool {
 	key := func(v parser.Field) string {
-		return v.Table + "." + v.Column
+		if v.Table != "" {
+			return v.Table + "." + v.Column
+		}
+		return v.Column
 	}
 
 	for _, f := range filters {

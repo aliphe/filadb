@@ -44,7 +44,7 @@ func (e *expr) read(assertions ...assertion) ([]*lexer.Token, *expr, error) {
 		return nil, nil, err
 	}
 
-	err, _ = sequence(assertions...)(toks...)
+	err = sequence(assertions...)(toks...)
 
 	return toks, expr, err
 }
@@ -53,40 +53,39 @@ func (e *expr) Cursor() int {
 	return e.cursor
 }
 
-type assertion func(t ...*lexer.Token) (error, []lexer.Kind)
+type assertion func(t ...*lexer.Token) error
 
 func is(k lexer.Kind) assertion {
-	return func(t ...*lexer.Token) (error, []lexer.Kind) {
+	return func(t ...*lexer.Token) error {
 		if k != lexer.KindAny && t[0].Kind != k {
-			return newUnexpectedTokenError(t[0], k), []lexer.Kind{k}
+			return newUnexpectedTokenError(t[0], k)
 		}
-		return nil, nil
+		return nil
 	}
 }
 
 func sequence(a ...assertion) assertion {
-	return func(t ...*lexer.Token) (error, []lexer.Kind) {
+	return func(t ...*lexer.Token) error {
 		for i, a := range a {
-			err, _ := a(t[i])
+			err := a(t[i])
 			if err != nil {
-				return err, nil
+				return err
 			}
 		}
-		return nil, nil
+		return nil
 	}
 }
 
 func oneOf(a ...assertion) assertion {
-	return func(t ...*lexer.Token) (error, []lexer.Kind) {
-		var want []lexer.Kind
+	return func(t ...*lexer.Token) error {
 		for _, a := range a {
-			err, k := a(t[0])
+			err := a(t[0])
 			if err == nil {
-				return nil, nil
+				return nil
 			}
-			want = append(want, k...)
 		}
-		return nil, dedup(want)
+
+		return newUnexpectedTokenError(t[0])
 	}
 }
 

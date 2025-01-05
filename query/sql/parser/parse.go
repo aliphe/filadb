@@ -20,7 +20,10 @@ func newUnexpectedTokenError(token *lexer.Token, want ...lexer.Kind) UnexpectedT
 }
 
 func (u UnexpectedTokenError) Error() string {
-	return fmt.Sprintf("unexpected token \"%s\" at position %d, want one of %v", u.token.Value, u.token.Position, u.want)
+	if len(u.want) > 0 {
+		return fmt.Sprintf("unexpected token \"%v\" at position %d, want one of %v", u.token.Value, u.token.Position, u.want)
+	}
+	return fmt.Sprintf("unexpected token \"%v\" at position %d", u.token.Value, u.token.Position)
 }
 
 type QueryType string
@@ -400,7 +403,7 @@ func parseCSV(in *expr) ([]interface{}, *expr, error) {
 	var row []interface{}
 	for {
 		cur, exp, err := expr.read(
-			oneOf(is(lexer.KindNumberLiteral), is(lexer.KindStringLiteral)),
+			oneOf(is(lexer.KindNumberLiteral), is(lexer.KindStringLiteral), is(lexer.KindIdentifier)),
 			oneOf(is(lexer.KindCloseParen), is(lexer.KindComma)),
 		)
 		if err != nil {
@@ -565,27 +568,21 @@ func parseFields(in *expr) ([]Field, *expr, error) {
 }
 
 func parseValue(in *expr) (Value, *expr, error) {
-	lit, litExpr, litErr := parseLiteral(in)
-	field, fieldExpr, fieldErr := parseField(in)
-	if litErr != nil && fieldErr != nil {
-		return Value{}, nil, errors.Join(litErr, fieldErr)
+	if lit, expr, err := parseLiteral(in); err == nil {
+		return Value{
+			Type:  ValueTypeLitteral,
+			Value: lit,
+		}, expr, nil
 	}
 
-	expr := in
-	var t ValueType
-	if litErr == nil {
-		expr = litExpr
-		t = ValueTypeLitteral
-	} else if fieldErr == nil {
-		expr = fieldExpr
-		t = ValueTypeReference
+	if field, expr, err := parseField(in); err == nil {
+		return Value{
+			Type:      ValueTypeReference,
+			Reference: field,
+		}, expr, nil
 	}
 
-	return Value{
-		Type:      t,
-		Reference: field,
-		Value:     lit,
-	}, expr, nil
+	return Value{}, nil, newUnexpectedTokenError(in.tokens[0])
 }
 
 func parseLiteral(in *expr) (interface{}, *expr, error) {
@@ -750,7 +747,7 @@ func parseFilter(in *expr) (Filter, *expr, error) {
 		op = OpLessThan
 	}
 
-	right, expr, err := parseValue(in)
+	right, expr, err := parseValue(expr)
 	if err != nil {
 		return Filter{}, nil, err
 	}
