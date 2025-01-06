@@ -3,6 +3,7 @@ package eval
 import (
 	"testing"
 
+	"github.com/aliphe/filadb/query/sql/lexer"
 	"github.com/aliphe/filadb/query/sql/parser"
 )
 
@@ -75,7 +76,19 @@ func Test_eval(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.given, func(_ *testing.T) {
-			return
+			tokens, err := lexer.Tokenize(tc.given)
+			if err != nil {
+				t.Fatalf("Tokenize error: %v", err)
+			}
+			ast, err := parser.Parse(tokens)
+			if err != nil {
+				t.Fatalf("Parse error: %v", err)
+			}
+
+			_, err = plan(ast.Select.From)
+			if err != nil {
+				t.Fatalf("plan error: %v", err)
+			}
 		})
 	}
 }
