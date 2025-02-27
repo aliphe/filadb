@@ -114,22 +114,20 @@ func Test_Parse(t *testing.T) {
 						Joins: []Join{
 							{
 								Table: "posts",
-								On: []Filter{
-									{
-										Left: Value{
-											Type: ValueTypeReference,
-											Reference: Field{
-												Table:  "posts",
-												Column: "user_id",
-											},
+								On: Filter{
+									Left: Value{
+										Type: ValueTypeReference,
+										Reference: Field{
+											Table:  "posts",
+											Column: "user_id",
 										},
-										Op: OpEqual,
-										Right: Value{
-											Type: ValueTypeReference,
-											Reference: Field{
-												Table:  "users",
-												Column: "id",
-											},
+									},
+									Op: OpEqual,
+									Right: Value{
+										Type: ValueTypeReference,
+										Reference: Field{
+											Table:  "users",
+											Column: "id",
 										},
 									},
 								},

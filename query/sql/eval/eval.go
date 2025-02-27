@@ -197,7 +197,7 @@ func filter(rows []object.Row, f []parser.Filter) []object.Row {
 func matches(row object.Row, filters []parser.Filter) bool {
 	key := func(v parser.Field) string {
 		if v.Table != "" {
-			return v.Table + "." + v.Column
+			return string(v.Table) + "." + v.Column
 		}
 		return v.Column
 	}

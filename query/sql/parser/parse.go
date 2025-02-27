@@ -88,11 +88,11 @@ type Select struct {
 
 type Join struct {
 	Table object.Table
-	On    []Filter
+	On    Filter
 }
 
 type Field struct {
-	Table  string
+	Table  object.Table
 	Column string
 }
 
@@ -611,7 +611,7 @@ func parseField(in *expr) (Field, *expr, error) {
 	}
 
 	return Field{
-		Table:  cur[0].Value.(string),
+		Table:  object.Table(cur[0].Value.(string)),
 		Column: next[1].Value.(string),
 	}, exp, nil
 }
@@ -677,14 +677,14 @@ func parseJoin(in *expr) (*Join, *expr, error) {
 		is(lexer.KindOn),
 	)
 
-	filters, expr, err := parseFilters(expr)
+	filter, expr, err := parseFilter(expr)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	return &Join{
 		Table: object.Table(cur[0].Value.(string)),
-		On:    filters,
+		On:    filter,
 	}, expr, nil
 }
 
