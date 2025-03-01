@@ -73,8 +73,9 @@ type Insert struct {
 }
 
 type Update struct {
-	From From
-	Set  Set
+	From    object.Table
+	Set     Set
+	Filters []Filter
 }
 
 type Set struct {
@@ -82,8 +83,10 @@ type Set struct {
 }
 
 type Select struct {
-	Fields []Field
-	From   From
+	Fields  []Field
+	From    object.Table
+	Joins   []Join
+	Filters []Filter
 }
 
 type Join struct {
@@ -96,12 +99,6 @@ type Field struct {
 	Column string
 }
 
-type From struct {
-	Table object.Table
-	Where []Filter
-	Joins []Join
-}
-
 type Filter struct {
 	Left  Value
 	Op    Op
@@ -111,7 +108,7 @@ type Filter struct {
 type Value struct {
 	Type      ValueType
 	Reference Field
-	Value     interface{}
+	Value     any
 }
 
 type ValueType int
