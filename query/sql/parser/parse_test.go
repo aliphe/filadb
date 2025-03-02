@@ -19,9 +19,7 @@ func Test_Parse(t *testing.T) {
 				Type: QueryTypeSelect,
 				Select: Select{
 					Fields: []Field{{Column: "*"}},
-					From: From{
-						Table: "USERS",
-					},
+					From:   "USERS",
 				},
 			},
 		},
@@ -31,34 +29,32 @@ func Test_Parse(t *testing.T) {
 				Type: QueryTypeSelect,
 				Select: Select{
 					Fields: []Field{{Column: "*"}},
-					From: From{
-						Table: "USERS",
-						Where: []Filter{
-							{
-								Left: Value{
-									Type: ValueTypeReference,
-									Reference: Field{
-										Column: "id",
-									},
-								},
-								Op: OpEqual,
-								Right: Value{
-									Type:  ValueTypeLitteral,
-									Value: "1",
+					From:   "USERS",
+					Filters: []Filter{
+						{
+							Left: Value{
+								Type: ValueTypeReference,
+								Reference: Field{
+									Column: "id",
 								},
 							},
-							{
-								Left: Value{
-									Type: ValueTypeReference,
-									Reference: Field{
-										Column: "name",
-									},
+							Op: OpEqual,
+							Right: Value{
+								Type:  ValueTypeLitteral,
+								Value: "1",
+							},
+						},
+						{
+							Left: Value{
+								Type: ValueTypeReference,
+								Reference: Field{
+									Column: "name",
 								},
-								Op: OpEqual,
-								Right: Value{
-									Type:  ValueTypeLitteral,
-									Value: "john",
-								},
+							},
+							Op: OpEqual,
+							Right: Value{
+								Type:  ValueTypeLitteral,
+								Value: "john",
 							},
 						},
 					},
@@ -79,56 +75,54 @@ func Test_Parse(t *testing.T) {
 							Column: "name",
 						},
 					},
-					From: From{
-						Table: "users",
-						Where: []Filter{
-							{
+					From: "users",
+					Filters: []Filter{
+						{
+							Left: Value{
+								Type: ValueTypeReference,
+								Reference: Field{
+									Table:  "posts",
+									Column: "label",
+								},
+							},
+							Op: OpEqual,
+							Right: Value{
+								Type:  ValueTypeLitteral,
+								Value: "public",
+							},
+						},
+						{
+							Left: Value{
+								Type: ValueTypeReference,
+								Reference: Field{
+									Table:  "users",
+									Column: "name",
+								},
+							},
+							Op: OpEqual,
+							Right: Value{
+								Type:  ValueTypeLitteral,
+								Value: "bob",
+							},
+						},
+					},
+					Joins: []Join{
+						{
+							Table: "posts",
+							On: Filter{
 								Left: Value{
 									Type: ValueTypeReference,
 									Reference: Field{
 										Table:  "posts",
-										Column: "label",
+										Column: "user_id",
 									},
 								},
 								Op: OpEqual,
 								Right: Value{
-									Type:  ValueTypeLitteral,
-									Value: "public",
-								},
-							},
-							{
-								Left: Value{
 									Type: ValueTypeReference,
 									Reference: Field{
 										Table:  "users",
-										Column: "name",
-									},
-								},
-								Op: OpEqual,
-								Right: Value{
-									Type:  ValueTypeLitteral,
-									Value: "bob",
-								},
-							},
-						},
-						Joins: []Join{
-							{
-								Table: "posts",
-								On: Filter{
-									Left: Value{
-										Type: ValueTypeReference,
-										Reference: Field{
-											Table:  "posts",
-											Column: "user_id",
-										},
-									},
-									Op: OpEqual,
-									Right: Value{
-										Type: ValueTypeReference,
-										Reference: Field{
-											Table:  "users",
-											Column: "id",
-										},
+										Column: "id",
 									},
 								},
 							},

@@ -70,7 +70,7 @@ func (e *Evaluator) EvalExpr(ctx context.Context, ast parser.SQLQuery) ([]byte, 
 }
 
 func (e *Evaluator) evalUpdate(ctx context.Context, update parser.Update) (int, error) {
-	rows, err := e.evalFrom(ctx, update.From)
+	rows, err := e.scan(ctx, update.From, update.Filters...)
 	if err != nil {
 		return 0, fmt.Errorf("eval from: %w", err)
 	}
@@ -79,7 +79,7 @@ func (e *Evaluator) evalUpdate(ctx context.Context, update parser.Update) (int, 
 		for k, v := range update.Set.Update {
 			r[k] = v
 		}
-		if err := e.client.UpdateRow(ctx, update.From.Table, r); err != nil {
+		if err := e.client.UpdateRow(ctx, update.From, r); err != nil {
 			return i, fmt.Errorf("apply update for row %v: %w", r["id"], err)
 		}
 	}
@@ -110,14 +110,14 @@ func (e *Evaluator) evalCreateIndex(ctx context.Context, create parser.CreateInd
 }
 
 func (e *Evaluator) evalSelect(ctx context.Context, sel parser.Select) ([]byte, error) {
-	from, err := e.evalFrom(ctx, sel.From)
+	from, err := e.scan(ctx, sel.From, sel.Filters...)
 	if err != nil {
 		return nil, fmt.Errorf("eval from: %w", err)
 	}
 
 	fields := make([]string, 0, len(sel.Fields))
 
-	sh, err := e.client.Shape(ctx, sel.From.Table)
+	sh, err := e.client.Shape(ctx, sel.From)
 	if err != nil {
 		return nil, err
 	}
@@ -163,14 +163,6 @@ func (e *Evaluator) evalInsert(ctx context.Context, ins parser.Insert) (int, err
 		}
 	}
 	return len(ins.Rows), nil
-}
-
-func (e *Evaluator) evalFrom(ctx context.Context, from parser.From) ([]object.Row, error) {
-	var filters []parser.Filter
-	if from.Where != nil {
-		filters = from.Where
-	}
-	return e.scan(ctx, from.Table, filters...)
 }
 
 func (e *Evaluator) scan(ctx context.Context, table object.Table, filters ...parser.Filter) ([]object.Row, error) {

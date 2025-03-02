@@ -216,11 +216,9 @@ func parseUpdate(in *expr) (Update, *expr, error) {
 	}
 
 	return Update{
-		From: From{
-			Table: object.Table(table),
-			Where: where,
-		},
-		Set: set,
+		From:    object.Table(table),
+		Set:     set,
+		Filters: where,
 	}, expr, nil
 }
 
@@ -533,9 +531,21 @@ func parseSelect(in *expr) (Select, *expr, error) {
 		return Select{}, in, fmt.Errorf("parse from: %w", err)
 	}
 
+	joins, expr, err := parseJoins(expr)
+	if err != nil {
+		return Select{}, nil, err
+	}
+
+	where, expr, err := parseWhere(expr)
+	if err != nil {
+		return Select{}, nil, err
+	}
+
 	return Select{
-		Fields: fields,
-		From:   from,
+		Fields:  fields,
+		From:    from,
+		Joins:   joins,
+		Filters: where,
 	}, expr, nil
 }
 
@@ -613,37 +623,23 @@ func parseField(in *expr) (Field, *expr, error) {
 	}, exp, nil
 }
 
-func parseFrom(in *expr) (From, *expr, error) {
+func parseFrom(in *expr) (object.Table, *expr, error) {
 	_, expr, err := in.read(is(lexer.KindFrom))
 	if err != nil {
-		return From{}, nil, err
+		return "", nil, err
 	}
 
 	cur, expr, err := expr.read(is(lexer.KindIdentifier))
 	if err != nil {
-		return From{}, nil, err
-	}
-
-	joins, expr, err := parseJoins(expr)
-	if err != nil {
-		return From{}, nil, err
-	}
-
-	where, expr, err := parseWhere(expr)
-	if err != nil {
-		return From{}, nil, err
+		return "", nil, err
 	}
 
 	table, ok := cur[0].Value.(string)
 	if !ok {
-		return From{}, nil, fmt.Errorf("invalid table name %b", cur[0].Value)
+		return "", nil, fmt.Errorf("invalid table name %b", cur[0].Value)
 	}
 
-	return From{
-		Table: object.Table(table),
-		Where: where,
-		Joins: joins,
-	}, expr, nil
+	return object.Table(table), expr, nil
 }
 
 func parseJoins(in *expr) ([]Join, *expr, error) {
