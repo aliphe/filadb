@@ -8,7 +8,6 @@ import (
 	"github.com/aliphe/filadb/db/object"
 	"github.com/aliphe/filadb/db/schema"
 	"github.com/aliphe/filadb/db/storage"
-	"github.com/aliphe/filadb/query/sql/parser"
 )
 
 type schemaStore interface {
@@ -36,6 +35,11 @@ func NewClient(store storage.ReaderWriter, schema schemaStore, index indexStore)
 	}
 
 	return c
+}
+
+type Filter struct {
+	Col string
+	Val any
 }
 
 //
@@ -118,7 +122,7 @@ func (c *Client) GetRow(ctx context.Context, t object.Table, id object.ID, dst *
 	return nil
 }
 
-func (c *Client) Scan(ctx context.Context, t object.Table, dst *[]object.Row, filters ...parser.Filter) error {
+func (c *Client) Scan(ctx context.Context, t object.Table, dst *[]object.Row, filters ...Filter) error {
 	sch, err := c.schema.Get(ctx, t)
 	if err != nil {
 		return err
@@ -146,7 +150,7 @@ func (c *Client) Scan(ctx context.Context, t object.Table, dst *[]object.Row, fi
 
 // indexScan will attempt to fetch the rows using indexes defined on the table.
 // if none are usable, it will return an empty slice and empty error.
-func (c *Client) indexScan(ctx context.Context, t object.Table, filters ...parser.Filter) ([][]byte, error) {
+func (c *Client) indexScan(ctx context.Context, t object.Table, filters ...Filter) ([][]byte, error) {
 	idxs, err := c.index.Scan(ctx, t)
 	if err != nil {
 		return nil, err
@@ -154,7 +158,7 @@ func (c *Client) indexScan(ctx context.Context, t object.Table, filters ...parse
 
 	cols := make([]string, 0, len(filters))
 	for _, f := range filters {
-		cols = append(cols, f.Left.Reference.Column)
+		cols = append(cols, f.Col)
 	}
 
 	var idx *index.Index
@@ -170,7 +174,7 @@ func (c *Client) indexScan(ctx context.Context, t object.Table, filters ...parse
 
 	row := make(object.Row)
 	for _, f := range filters {
-		row[f.Left.Reference.Column] = f.Right.Value
+		row[f.Col] = f.Val
 	}
 
 	ids, err := c.store.Get(ctx, string(idx.Name), string(idx.Key(row)))

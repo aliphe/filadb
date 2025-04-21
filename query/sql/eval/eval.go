@@ -167,8 +167,15 @@ func (e *Evaluator) evalInsert(ctx context.Context, ins parser.Insert) (int, err
 }
 
 func (e *Evaluator) scan(ctx context.Context, table object.Table, filters ...parser.Filter) ([]object.Row, error) {
+	f := make([]db.Filter, 0, len(filters))
+	for _, filter := range filters {
+		f = append(f, db.Filter{
+			Col: filter.Left.Reference.Column,
+			Val: filter.Right.Value,
+		})
+	}
 	var rows []object.Row
-	err := e.client.Scan(ctx, table, &rows, filters...)
+	err := e.client.Scan(ctx, table, &rows, f...)
 	if err != nil {
 		return nil, err
 	}
