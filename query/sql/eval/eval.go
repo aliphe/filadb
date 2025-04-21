@@ -6,6 +6,8 @@ import (
 	"slices"
 	"strconv"
 
+	"maps"
+
 	"github.com/aliphe/filadb/db"
 	"github.com/aliphe/filadb/db/index"
 	"github.com/aliphe/filadb/db/object"
@@ -77,9 +79,7 @@ func (e *Evaluator) evalUpdate(ctx context.Context, update parser.Update) (int, 
 	}
 
 	for i, r := range rows {
-		for k, v := range update.Set.Update {
-			r[k] = v
-		}
+		maps.Copy(r, update.Set.Update)
 		if err := e.client.UpdateRow(ctx, update.From, r); err != nil {
 			return i, fmt.Errorf("apply update for row %v: %w", r["id"], err)
 		}
@@ -169,10 +169,12 @@ func (e *Evaluator) evalInsert(ctx context.Context, ins parser.Insert) (int, err
 func (e *Evaluator) scan(ctx context.Context, table object.Table, filters ...parser.Filter) ([]object.Row, error) {
 	f := make([]db.Filter, 0, len(filters))
 	for _, filter := range filters {
-		f = append(f, db.Filter{
-			Col: filter.Left.Reference.Column,
-			Val: filter.Right.Value,
-		})
+		if filter.Left.Reference.Table == table {
+			f = append(f, db.Filter{
+				Col: filter.Left.Reference.Column,
+				Val: filter.Right.Value,
+			})
+		}
 	}
 	var rows []object.Row
 	err := e.client.Scan(ctx, table, &rows, f...)
