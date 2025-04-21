@@ -3,6 +3,7 @@ package eval
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strconv"
 
 	"github.com/aliphe/filadb/db"
@@ -195,9 +196,25 @@ func matches(row object.Row, filters []parser.Filter) bool {
 	}
 
 	for _, f := range filters {
-		lk := key(f.Left.Reference)
-		if f.Op == parser.OpEqual && row[lk] != f.Right.Value {
-			return false
+		var ref parser.Field
+		var val any
+		if f.Left.Type == parser.ValueTypeReference {
+			ref = f.Left.Reference
+			val = f.Right.Value
+		} else {
+			val = f.Left.Value
+			ref = f.Right.Reference
+		}
+		lk := key(ref)
+		switch f.Op {
+		case parser.OpEqual:
+			return row[lk] == val
+		case parser.OpInclude:
+			vals, ok := val.([]any)
+			if !ok {
+				return false
+			}
+			return slices.Contains(vals, row[lk])
 		}
 	}
 
