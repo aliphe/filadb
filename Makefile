@@ -1,5 +1,5 @@
 run:
-	go run ./cmd/api
+	go run ./cmd/query
 
 test:
 	go test ./...

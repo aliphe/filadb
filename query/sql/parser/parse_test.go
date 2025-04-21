@@ -65,7 +65,7 @@ func Test_Parse(t *testing.T) {
 			given: `
 				SELECT posts.name FROM users
 				JOIN posts ON posts.user_id = users.id
-				WHERE posts.label = 'public' and users.name = 'bob';`,
+				WHERE posts.label = 'public' and users.name IN ('alice', 'bob');`,
 			want: SQLQuery{
 				Type: QueryTypeSelect,
 				Select: Select{
@@ -99,10 +99,10 @@ func Test_Parse(t *testing.T) {
 									Column: "name",
 								},
 							},
-							Op: OpEqual,
+							Op: OpInclude,
 							Right: Value{
-								Type:  ValueTypeLitteral,
-								Value: "bob",
+								Type:  ValueTypeList,
+								Value: []any{"alice", "bob"},
 							},
 						},
 					},

@@ -12,7 +12,7 @@ func Test_NextToken(t *testing.T) {
 		want  []Kind
 	}{
 		{
-			given: `SELECT * from users where name = 'alif' and id = 1;`,
+			given: `SELECT * from users where name = 'alif' and id IN ('1', '2');`,
 			want: []Kind{
 				KindSelect,
 				KindIdentifier,
@@ -24,8 +24,12 @@ func Test_NextToken(t *testing.T) {
 				KindStringLiteral,
 				KindAnd,
 				KindIdentifier,
-				KindEqual,
-				KindNumberLiteral,
+				KindIn,
+				KindOpenParen,
+				KindStringLiteral,
+				KindComma,
+				KindStringLiteral,
+				KindCloseParen,
 				KindSemiColumn,
 			},
 		},

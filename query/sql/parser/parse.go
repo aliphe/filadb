@@ -116,6 +116,7 @@ type ValueType int
 const (
 	ValueTypeLitteral ValueType = iota + 1
 	ValueTypeReference
+	ValueTypeList
 )
 
 type Op int
@@ -126,6 +127,7 @@ const (
 	OpLessThanEqual
 	OpMoreThan
 	OpMoreThanEqual
+	OpInclude
 )
 
 func Parse(tokens []*lexer.Token) (SQLQuery, error) {
@@ -390,12 +392,12 @@ func parseCols(in *expr) ([]string, *expr, error) {
 	return cols, expr, nil
 }
 
-func parseCSV(in *expr) ([]interface{}, *expr, error) {
+func parseCSV(in *expr) ([]any, *expr, error) {
 	_, expr, err := in.read(is(lexer.KindOpenParen))
 	if err != nil {
 		return nil, nil, err
 	}
-	var row []interface{}
+	var row []any
 	for {
 		cur, exp, err := expr.read(
 			oneOf(is(lexer.KindNumberLiteral), is(lexer.KindStringLiteral), is(lexer.KindIdentifier)),
@@ -589,10 +591,17 @@ func parseValue(in *expr) (Value, *expr, error) {
 		}, expr, nil
 	}
 
+	if csv, expr, err := parseCSV(in); err == nil {
+		return Value{
+			Type:  ValueTypeList,
+			Value: csv,
+		}, expr, nil
+	}
+
 	return Value{}, nil, newUnexpectedTokenError(in.tokens[0])
 }
 
-func parseLiteral(in *expr) (interface{}, *expr, error) {
+func parseLiteral(in *expr) (any, *expr, error) {
 	cur, expr, err := in.read(oneOf(
 		is(lexer.KindStringLiteral),
 		is(lexer.KindNumberLiteral),
@@ -724,6 +733,7 @@ func parseFilter(in *expr) (Filter, *expr, error) {
 			is(lexer.KindEqual),
 			is(lexer.KindAbove),
 			is(lexer.KindBelow),
+			is(lexer.KindIn),
 		),
 	)
 	if err != nil {
@@ -738,6 +748,8 @@ func parseFilter(in *expr) (Filter, *expr, error) {
 		op = OpMoreThan
 	case lexer.KindBelow:
 		op = OpLessThan
+	case lexer.KindIn:
+		op = OpInclude
 	}
 
 	right, expr, err := parseValue(expr)
