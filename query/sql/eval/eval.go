@@ -16,6 +16,25 @@ import (
 	"github.com/google/uuid"
 )
 
+/*
+select * from users
+inner join posts on posts.user_id = users.id
+inner join comments on posts.id = comments.post_id
+
+users:
+
+	1->id:1,name:alif
+	2->id:2,name:alof
+
+posts:
+
+	1->id:3,title:post 3
+	 ->id:4,title:post 4
+
+comments:
+
+	4->id:5,content:super
+*/
 type Evaluator struct {
 	client *db.Client
 }
@@ -110,10 +129,74 @@ func (e *Evaluator) evalCreateIndex(ctx context.Context, create parser.CreateInd
 	return e.client.CreateIndex(ctx, &idx)
 }
 
+func extractCols(cache map[any]object.Row, col string) ([]any, error) {
+	cols := make([]any, 0, len(cache))
+	for _, r := range cache {
+		cols = append(cols, r[col])
+	}
+
+	return cols, nil
+}
+
+func (e *Evaluator) evalJoin(ctx context.Context, res map[any]object.Row, j parser.Join) error {
+	filter := parser.Filter{
+		Left: parser.Value{
+			Type: parser.ValueTypeReference,
+			Reference: parser.Field{
+				Table:  j.Table,
+				Column: j.On.Foreign,
+			},
+		},
+	}
+	cols, err := extractCols(res, j.On.Local)
+	if err != nil {
+		return err
+	}
+	filter.Op = parser.OpInclude
+	filter.Right = parser.Value{
+		Value: cols,
+		Type:  parser.ValueTypeList,
+	}
+
+	rows, err := e.scan(ctx, j.Table, filter)
+	if err != nil {
+		return fmt.Errorf("eval from: %w", err)
+	}
+
+	byCol := make(map[any][]object.Row, len(rows))
+	for _, r := range rows {
+		byCol[r[j.On.Foreign]] = append(byCol[r[j.On.Foreign]], r)
+	}
+
+	toAdd := make(map[string]object.Row)
+	for _, r := range res {
+		if rr, ok := byCol[r[j.On.Local]]; ok {
+			maps.Copy(r, rr[0])
+			for i := range rr[1:] {
+				r = maps.Clone(r)
+				toAdd[string(r.ObjectID())] = r
+				maps.Copy(r, rr[i])
+			}
+		}
+	}
+
+	return nil
+}
+
 func (e *Evaluator) evalSelect(ctx context.Context, sel parser.Select) ([]byte, error) {
 	from, err := e.scan(ctx, sel.From, sel.Filters...)
 	if err != nil {
 		return nil, fmt.Errorf("eval from: %w", err)
+	}
+
+	cache := make(map[any]object.Row, len(from))
+	for _, r := range from {
+		cache[r.ObjectID()] = r
+	}
+	for _, j := range sel.Joins {
+		if err := e.evalJoin(ctx, cache, j); err != nil {
+			return nil, err
+		}
 	}
 
 	fields := make([]string, 0, len(sel.Fields))

@@ -91,7 +91,14 @@ type Select struct {
 
 type Join struct {
 	Table object.Table
-	On    Filter
+	On    On
+}
+
+type On struct {
+	// Local is the column referenced on the local table.
+	Local string
+	// Foreign is the column referenced on the foreign table.
+	Foreign string
 }
 
 type Field struct {
@@ -684,9 +691,24 @@ func parseJoin(in *expr) (*Join, *expr, error) {
 		return nil, nil, err
 	}
 
+	table := object.Table(cur[0].Value.(string))
+
+	var on On
+
+	switch {
+	case filter.Left.Reference.Table == table:
+		on.Foreign = filter.Left.Reference.Column
+		on.Local = filter.Right.Reference.Column
+	case filter.Right.Reference.Table == table:
+		on.Foreign = filter.Right.Reference.Column
+		on.Local = filter.Left.Reference.Column
+	default:
+		return nil, nil, errors.New("join ON should always reference the joined table")
+	}
+
 	return &Join{
-		Table: object.Table(cur[0].Value.(string)),
-		On:    filter,
+		Table: table,
+		On:    on,
 	}, expr, nil
 }
 
