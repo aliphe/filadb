@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/aliphe/filadb/btree"
@@ -23,7 +24,7 @@ func WithFileOptions(opts ...file.Option) Option {
 	}
 }
 
-func Run(opts ...Option) error {
+func Run(ctx context.Context, opts ...Option) error {
 	var opt options
 	for _, o := range opts {
 		o(&opt)
@@ -46,11 +47,24 @@ func Run(opts ...Option) error {
 	db := db.NewClient(btree, schema, index)
 	q := sql.NewRunner(db)
 
-	handler := tcp.New(q)
-
-	if err := handler.Listen(); err != nil {
-		return fmt.Errorf("listening to request: %w", err)
+	server, err := tcp.NewServer(q)
+	if err != nil {
+		return err
 	}
 
-	return nil
+	errChan := make(chan error, 1)
+	go func() {
+		if err := server.Listen(ctx); err != nil {
+			errChan <- fmt.Errorf("listening to request: %w", err)
+		}
+		close(errChan)
+	}()
+
+	select {
+	case err := <-errChan:
+		return err
+	case <-ctx.Done():
+		server.Close()
+		return ctx.Err()
+	}
 }

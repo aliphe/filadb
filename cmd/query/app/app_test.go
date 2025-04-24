@@ -2,9 +2,9 @@ package app
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"net"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -72,12 +72,13 @@ func Test_Run(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			err := os.RemoveAll(".testdb")
-			if err != nil {
-				t.Fatal(err)
-			}
+			// t.Parallel()
+			dir := t.TempDir()
+			t.Log("DIR", dir)
+			// err := os.RemoveAll(dir)
 
-			go Run(WithFileOptions(file.WithPath(".testdb")))
+			ctx, cancel := context.WithCancel(t.Context())
+			go Run(ctx, WithFileOptions(file.WithPath(dir)))
 
 			time.Sleep(50 * time.Millisecond)
 
@@ -99,6 +100,12 @@ func Test_Run(t *testing.T) {
 					t.Fatal(fmt.Errorf("%s mismatch, want='%s', got='%s'", step.given, string(step.want), string(res)))
 				}
 			}
+
+			err = conn.Close()
+			if err != nil {
+				t.Fatal(err)
+			}
+			cancel()
 		})
 	}
 }

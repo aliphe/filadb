@@ -5,57 +5,76 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"log/slog"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/aliphe/filadb/cmd/query/app/handler"
 	"github.com/aliphe/filadb/query"
 )
 
-type Listener struct {
+type Server struct {
 	q       query.Runner
-	version string
-	addr    string
 	timeout time.Duration
+	l       net.Listener
+	wg      sync.WaitGroup
+	quit    chan any
 }
 
-func New(q query.Runner, opts ...handler.Option) *Listener {
+func NewServer(q query.Runner, opts ...handler.Option) (*Server, error) {
 	o := &handler.Options{
-		Version: "0.1.0",
-		Addr:    ":5432",
-		Timeout: 1 * time.Minute,
+		Addr: ":5432",
 	}
 	for _, opt := range opts {
 		opt(o)
 	}
-	return &Listener{
-		q:       q,
-		version: o.Version,
-		addr:    o.Addr,
-		timeout: o.Timeout,
+
+	ln, err := net.Listen("tcp", o.Addr)
+	if err != nil {
+		return nil, fmt.Errorf("init tcp connection: %w", err)
 	}
+
+	s := &Server{
+		q:       q,
+		l:       ln,
+		timeout: o.Timeout,
+		quit:    make(chan any),
+	}
+
+	s.wg.Add(1)
+	return s, nil
 }
 
-func (l *Listener) Listen() error {
-	ln, err := net.Listen("tcp", l.addr)
-	if err != nil {
-		return fmt.Errorf("init tcp connection: %w", err)
-	}
+func (s *Server) Listen(ctx context.Context) error {
+	defer s.wg.Done()
 
 	for {
-		conn, err := ln.Accept()
+		conn, err := s.l.Accept()
 		if err != nil {
-			slog.Error("accept connection", slog.Any("err", err))
+			select {
+			case <-s.quit:
+				return nil
+			default:
+				slog.Error("accept connection", slog.Any("err", err))
+			}
 		}
 
-		go l.handleClient(conn)
+		s.wg.Add(1)
+		go func() {
+			s.handleClient(conn)
+			s.wg.Done()
+		}()
 	}
-
 }
 
-func (l *Listener) handleClient(conn net.Conn) {
+func (s *Server) Close() {
+	close(s.quit)
+	s.l.Close()
+	s.wg.Wait()
+}
+
+func (s *Server) handleClient(conn net.Conn) {
 	defer conn.Close()
 
 	for {
@@ -68,7 +87,7 @@ func (l *Listener) handleClient(conn net.Conn) {
 		}
 
 		for _, q := range queries {
-			out, err := l.handleRequest(q)
+			out, err := s.handleRequest(q)
 			if err != nil {
 				fmt.Fprintf(conn, "handle query: %s", err)
 				continue
@@ -83,17 +102,16 @@ func (l *Listener) handleClient(conn net.Conn) {
 	}
 }
 
-func (l *Listener) handleRequest(q string) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), l.timeout)
+func (s *Server) handleRequest(q string) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), s.timeout)
 	defer cancel()
 
 	slog.Info("received", slog.String("query", string(q)))
 
-	res, err := l.q.Run(ctx, string(q))
+	res, err := s.q.Run(ctx, string(q))
 	if err != nil {
-		return []byte(fmt.Sprintf("run sql query: %s\n", err)), nil
+		return fmt.Appendf(nil, "run sql query: %s\n", err), nil
 	}
-	log.Println(string(res))
 
 	if len(res) == 0 {
 		return nil, nil

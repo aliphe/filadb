@@ -14,18 +14,11 @@ type Handler interface {
 }
 
 type Options struct {
-	Version string
 	Addr    string
 	Timeout time.Duration
 }
 
 type Option func(*Options)
-
-func WithVersion(version string) Option {
-	return func(o *Options) {
-		o.Version = version
-	}
-}
 
 func WithAddr(addr string) Option {
 	return func(o *Options) {

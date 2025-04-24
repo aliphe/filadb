@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"log/slog"
 
@@ -18,7 +19,7 @@ func main() {
 		slog.SetLogLoggerLevel(slog.LevelDebug)
 	}
 
-	if err := app.Run(); err != nil {
+	if err := app.Run(context.Background()); err != nil {
 		panic(err)
 	}
 }
