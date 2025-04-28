@@ -3,6 +3,7 @@ package parser
 import (
 	"testing"
 
+	"github.com/aliphe/filadb/db"
 	"github.com/aliphe/filadb/query/sql/lexer"
 	"github.com/google/go-cmp/cmp"
 )
@@ -38,7 +39,7 @@ func Test_Parse(t *testing.T) {
 									Column: "id",
 								},
 							},
-							Op: OpEqual,
+							Op: db.OpEqual,
 							Right: Value{
 								Type:  ValueTypeLitteral,
 								Value: "1",
@@ -51,7 +52,7 @@ func Test_Parse(t *testing.T) {
 									Column: "name",
 								},
 							},
-							Op: OpEqual,
+							Op: db.OpEqual,
 							Right: Value{
 								Type:  ValueTypeLitteral,
 								Value: "john",
@@ -85,7 +86,7 @@ func Test_Parse(t *testing.T) {
 									Column: "label",
 								},
 							},
-							Op: OpEqual,
+							Op: db.OpEqual,
 							Right: Value{
 								Type:  ValueTypeLitteral,
 								Value: "public",
@@ -99,7 +100,7 @@ func Test_Parse(t *testing.T) {
 									Column: "name",
 								},
 							},
-							Op: OpInclude,
+							Op: db.OpInclude,
 							Right: Value{
 								Type:  ValueTypeList,
 								Value: []any{"alice", "bob"},

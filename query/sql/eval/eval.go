@@ -129,7 +129,7 @@ func (e *Evaluator) evalCreateIndex(ctx context.Context, create parser.CreateInd
 	return e.client.CreateIndex(ctx, &idx)
 }
 
-func extractCols(cache map[any]object.Row, col string) ([]any, error) {
+func extractCols(cache []object.Row, field parser.Field) ([]any, error) {
 	cols := make([]any, 0, len(cache))
 	for _, r := range cache {
 		cols = append(cols, r[col])
@@ -138,21 +138,18 @@ func extractCols(cache map[any]object.Row, col string) ([]any, error) {
 	return cols, nil
 }
 
-func (e *Evaluator) evalJoin(ctx context.Context, res map[any]object.Row, j parser.Join) error {
+func (e *Evaluator) evalJoin(ctx context.Context, res []object.Row, j parser.Join) error {
 	filter := parser.Filter{
 		Left: parser.Value{
-			Type: parser.ValueTypeReference,
-			Reference: parser.Field{
-				Table:  j.Table,
-				Column: j.On.Foreign,
-			},
+			Type:      parser.ValueTypeReference,
+			Reference: j.On.Foreign,
 		},
 	}
 	cols, err := extractCols(res, j.On.Local)
 	if err != nil {
 		return err
 	}
-	filter.Op = parser.OpInclude
+	filter.Op = db.OpInclude
 	filter.Right = parser.Value{
 		Value: cols,
 		Type:  parser.ValueTypeList,
@@ -165,17 +162,16 @@ func (e *Evaluator) evalJoin(ctx context.Context, res map[any]object.Row, j pars
 
 	byCol := make(map[any][]object.Row, len(rows))
 	for _, r := range rows {
-		byCol[r[j.On.Foreign]] = append(byCol[r[j.On.Foreign]], r)
+		byCol[key(j.Table, j.On.Foreign)] = append(byCol[r[key(j.Table, j.On.Foreign)]], r)
 	}
 
-	toAdd := make(map[string]object.Row)
 	for _, r := range res {
-		if rr, ok := byCol[r[j.On.Local]]; ok {
-			maps.Copy(r, rr[0])
-			for i := range rr[1:] {
-				r = maps.Clone(r)
-				toAdd[string(r.ObjectID())] = r
-				maps.Copy(r, rr[i])
+		if joined, ok := byCol[r[j.On.Local]]; ok {
+			maps.Copy(r, joined[0])
+			for i := range joined[1:] {
+				joinedR := maps.Clone(r)
+				maps.Copy(joinedR, joined[i])
+				res = append(res, joinedR)
 			}
 		}
 	}
@@ -189,12 +185,8 @@ func (e *Evaluator) evalSelect(ctx context.Context, sel parser.Select) ([]byte, 
 		return nil, fmt.Errorf("eval from: %w", err)
 	}
 
-	cache := make(map[any]object.Row, len(from))
-	for _, r := range from {
-		cache[r.ObjectID()] = r
-	}
 	for _, j := range sel.Joins {
-		if err := e.evalJoin(ctx, cache, j); err != nil {
+		if err := e.evalJoin(ctx, from, j); err != nil {
 			return nil, err
 		}
 	}
@@ -255,6 +247,7 @@ func (e *Evaluator) scan(ctx context.Context, table object.Table, filters ...par
 		if filter.Left.Reference.Table == table {
 			f = append(f, db.Filter{
 				Col: filter.Left.Reference.Column,
+				Op:  filter.Op,
 				Val: filter.Right.Value,
 			})
 		}
@@ -263,6 +256,14 @@ func (e *Evaluator) scan(ctx context.Context, table object.Table, filters ...par
 	err := e.client.Scan(ctx, table, &rows, f...)
 	if err != nil {
 		return nil, err
+	}
+
+	// prefix cols with table name, like users.id
+	for _, r := range rows {
+		for k, v := range r {
+			r[key(table, k)] = v
+			delete(r, k)
+		}
 	}
 
 	return filter(rows, filters), nil
@@ -279,14 +280,15 @@ func filter(rows []object.Row, f []parser.Filter) []object.Row {
 	return out
 }
 
-func matches(row object.Row, filters []parser.Filter) bool {
-	key := func(v parser.Field) string {
-		if v.Table != "" {
-			return string(v.Table) + "." + v.Column
-		}
-		return v.Column
+func key(table object.Table, col string) string {
+	if table != "" {
+		return string(fmt.Sprintf("%s.%s", table, col))
 	}
 
+	return col
+}
+
+func matches(row object.Row, filters []parser.Filter) bool {
 	for _, f := range filters {
 		var ref parser.Field
 		var val any
@@ -297,11 +299,11 @@ func matches(row object.Row, filters []parser.Filter) bool {
 			val = f.Left.Value
 			ref = f.Right.Reference
 		}
-		lk := key(ref)
+		lk := key(ref.Table, ref.Column)
 		switch f.Op {
-		case parser.OpEqual:
+		case db.OpEqual:
 			return row[lk] == val
-		case parser.OpInclude:
+		case db.OpInclude:
 			vals, ok := val.([]any)
 			if !ok {
 				return false

@@ -37,8 +37,20 @@ func NewClient(store storage.ReaderWriter, schema schemaStore, index indexStore)
 	return c
 }
 
+type Op int
+
+const (
+	OpEqual = iota + 1
+	OpLessThan
+	OpLessThanEqual
+	OpMoreThan
+	OpMoreThanEqual
+	OpInclude
+)
+
 type Filter struct {
 	Col string
+	Op  Op
 	Val any
 }
 

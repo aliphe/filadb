@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/aliphe/filadb/db"
 	"github.com/aliphe/filadb/db/object"
 	"github.com/aliphe/filadb/db/schema"
 	"github.com/aliphe/filadb/query/sql/lexer"
@@ -96,9 +97,9 @@ type Join struct {
 
 type On struct {
 	// Local is the column referenced on the local table.
-	Local string
+	Local Field
 	// Foreign is the column referenced on the foreign table.
-	Foreign string
+	Foreign Field
 }
 
 type Field struct {
@@ -108,7 +109,7 @@ type Field struct {
 
 type Filter struct {
 	Left  Value
-	Op    Op
+	Op    db.Op
 	Right Value
 }
 
@@ -124,17 +125,6 @@ const (
 	ValueTypeLitteral ValueType = iota + 1
 	ValueTypeReference
 	ValueTypeList
-)
-
-type Op int
-
-const (
-	OpEqual = iota + 1
-	OpLessThan
-	OpLessThanEqual
-	OpMoreThan
-	OpMoreThanEqual
-	OpInclude
 )
 
 func Parse(tokens []*lexer.Token) (SQLQuery, error) {
@@ -762,16 +752,16 @@ func parseFilter(in *expr) (Filter, *expr, error) {
 		return Filter{}, nil, err
 	}
 
-	var op Op
+	var op db.Op
 	switch cur[0].Kind {
 	case lexer.KindEqual:
-		op = OpEqual
+		op = db.OpEqual
 	case lexer.KindAbove:
-		op = OpMoreThan
+		op = db.OpMoreThan
 	case lexer.KindBelow:
-		op = OpLessThan
+		op = db.OpLessThan
 	case lexer.KindIn:
-		op = OpInclude
+		op = db.OpInclude
 	}
 
 	right, expr, err := parseValue(expr)
