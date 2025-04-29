@@ -132,7 +132,7 @@ func (e *Evaluator) evalCreateIndex(ctx context.Context, create parser.CreateInd
 func extractCols(cache []object.Row, field parser.Field) ([]any, error) {
 	cols := make([]any, 0, len(cache))
 	for _, r := range cache {
-		cols = append(cols, r[col])
+		cols = append(cols, r[key(field.Table, field.Column)])
 	}
 
 	return cols, nil
@@ -162,11 +162,15 @@ func (e *Evaluator) evalJoin(ctx context.Context, res []object.Row, j parser.Joi
 
 	byCol := make(map[any][]object.Row, len(rows))
 	for _, r := range rows {
-		byCol[key(j.Table, j.On.Foreign)] = append(byCol[r[key(j.Table, j.On.Foreign)]], r)
+		k := key(j.On.Foreign.Table, j.On.Foreign.Column)
+		byCol[r[k]] = append(byCol[r[k]], r)
 	}
 
 	for _, r := range res {
-		if joined, ok := byCol[r[j.On.Local]]; ok {
+		k := key(j.On.Local.Table, j.On.Local.Column)
+		col := r[k]
+		joined, ok := byCol[col]
+		if ok {
 			maps.Copy(r, joined[0])
 			for i := range joined[1:] {
 				joinedR := maps.Clone(r)
@@ -191,24 +195,17 @@ func (e *Evaluator) evalSelect(ctx context.Context, sel parser.Select) ([]byte, 
 		}
 	}
 
-	fields := make([]string, 0, len(sel.Fields))
-
-	sh, err := e.client.Shape(ctx, sel.From)
-	if err != nil {
-		return nil, err
-	}
+	fields := make([]parser.Field, 0, len(sel.Fields))
 
 	for _, s := range sel.Fields {
-		if s.Column == "*" {
-			fields = append(fields, sh...)
-		} else {
-			fields = append(fields, s.Column)
+		if s.Column != "*" {
+			fields = append(fields, s)
 		}
 	}
 
 	var out string
 	for i, f := range fields {
-		out += f
+		out += f.Column
 		if i < len(fields)-1 {
 			out += ","
 		}
@@ -216,7 +213,7 @@ func (e *Evaluator) evalSelect(ctx context.Context, sel parser.Select) ([]byte, 
 	out += "\n"
 	for _, row := range from {
 		for i, f := range fields {
-			out += fmt.Sprint(row[f])
+			out += fmt.Sprint(row[key(f.Table, f.Column)])
 			if i < len(fields)-1 {
 				out += ","
 			}
@@ -260,9 +257,15 @@ func (e *Evaluator) scan(ctx context.Context, table object.Table, filters ...par
 
 	// prefix cols with table name, like users.id
 	for _, r := range rows {
+		newValues := make(object.Row)
 		for k, v := range r {
-			r[key(table, k)] = v
-			delete(r, k)
+			newValues[key(table, k)] = v
+		}
+		maps.Copy(r, newValues)
+		for k := range r {
+			if _, isNewKey := newValues[k]; !isNewKey {
+				delete(r, k)
+			}
 		}
 	}
 

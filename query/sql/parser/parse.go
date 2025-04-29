@@ -687,11 +687,11 @@ func parseJoin(in *expr) (*Join, *expr, error) {
 
 	switch {
 	case filter.Left.Reference.Table == table:
-		on.Foreign = filter.Left.Reference.Column
-		on.Local = filter.Right.Reference.Column
+		on.Foreign = filter.Left.Reference
+		on.Local = filter.Right.Reference
 	case filter.Right.Reference.Table == table:
-		on.Foreign = filter.Right.Reference.Column
-		on.Local = filter.Left.Reference.Column
+		on.Foreign = filter.Right.Reference
+		on.Local = filter.Left.Reference
 	default:
 		return nil, nil, errors.New("join ON should always reference the joined table")
 	}

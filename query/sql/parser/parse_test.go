@@ -111,8 +111,14 @@ func Test_Parse(t *testing.T) {
 						{
 							Table: "posts",
 							On: On{
-								Local:   "id",
-								Foreign: "user_id",
+								Local: Field{
+									Table:  "users",
+									Column: "id",
+								},
+								Foreign: Field{
+									Table:  "posts",
+									Column: "user_id",
+								},
 							},
 						},
 					},
