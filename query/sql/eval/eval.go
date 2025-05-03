@@ -16,25 +16,6 @@ import (
 	"github.com/google/uuid"
 )
 
-/*
-select * from users
-inner join posts on posts.user_id = users.id
-inner join comments on posts.id = comments.post_id
-
-users:
-
-	1->id:1,name:alif
-	2->id:2,name:alof
-
-posts:
-
-	1->id:3,title:post 3
-	 ->id:4,title:post 4
-
-comments:
-
-	4->id:5,content:super
-*/
 type Evaluator struct {
 	client *db.Client
 }
@@ -49,11 +30,11 @@ func raw(s string) []byte {
 	return []byte(s + "\n")
 }
 
-func (e *Evaluator) EvalExpr(ctx context.Context, ast parser.SQLQuery) ([]byte, error) {
-	switch ast.Type {
+func (e *Evaluator) EvalExpr(ctx context.Context, q *parser.SQLQuery) ([]byte, error) {
+	switch q.Type {
 	case parser.QueryTypeInsert:
 		{
-			n, err := e.evalInsert(ctx, ast.Insert)
+			n, err := e.evalInsert(ctx, q.Insert)
 			if err != nil {
 				return nil, err
 			}
@@ -61,7 +42,7 @@ func (e *Evaluator) EvalExpr(ctx context.Context, ast parser.SQLQuery) ([]byte, 
 		}
 	case parser.QueryTypeSelect:
 		{
-			res, err := e.evalSelect(ctx, ast.Select)
+			res, err := e.evalSelect(ctx, q.Select)
 			if err != nil {
 				return nil, err
 			}
@@ -69,7 +50,7 @@ func (e *Evaluator) EvalExpr(ctx context.Context, ast parser.SQLQuery) ([]byte, 
 		}
 	case parser.QueryTypeUpdate:
 		{
-			n, err := e.evalUpdate(ctx, ast.Update)
+			n, err := e.evalUpdate(ctx, q.Update)
 			if err != nil {
 				return nil, err
 			}
@@ -77,16 +58,16 @@ func (e *Evaluator) EvalExpr(ctx context.Context, ast parser.SQLQuery) ([]byte, 
 		}
 	case parser.QueryTypeCreate:
 		{
-			if ast.Create.Type == parser.CreateTypeIndex {
-				return raw("CREATE INDEX"), e.evalCreateIndex(ctx, ast.Create.CreateIndex)
-			} else if ast.Create.Type == parser.CreateTypeTable {
-				return raw("CREATE TABLE"), e.evalCreateTable(ctx, ast.Create.CreateTable)
+			if q.Create.Type == parser.CreateTypeIndex {
+				return raw("CREATE INDEX"), e.evalCreateIndex(ctx, q.Create.CreateIndex)
+			} else if q.Create.Type == parser.CreateTypeTable {
+				return raw("CREATE TABLE"), e.evalCreateTable(ctx, q.Create.CreateTable)
 			}
 			return nil, nil
 		}
 	default:
 		{
-			return nil, fmt.Errorf("%s not implemented", ast.Type)
+			return nil, fmt.Errorf("%s not implemented", q.Type)
 		}
 	}
 }
@@ -129,26 +110,18 @@ func (e *Evaluator) evalCreateIndex(ctx context.Context, create parser.CreateInd
 	return e.client.CreateIndex(ctx, &idx)
 }
 
-func extractCols(cache []object.Row, field parser.Field) ([]any, error) {
-	cols := make([]any, 0, len(cache))
-	for _, r := range cache {
-		cols = append(cols, r[key(field.Table, field.Column)])
-	}
-
-	return cols, nil
-}
-
-func (e *Evaluator) evalJoin(ctx context.Context, res []object.Row, j parser.Join) error {
+func (e *Evaluator) joinScan(ctx context.Context, cache []object.Row, j parser.Join) ([]object.Row, error) {
 	filter := parser.Filter{
 		Left: parser.Value{
 			Type:      parser.ValueTypeReference,
 			Reference: j.On.Foreign,
 		},
 	}
-	cols, err := extractCols(res, j.On.Local)
-	if err != nil {
-		return err
+	cols := make([]any, 0, len(cache))
+	for _, r := range cache {
+		cols = append(cols, r[key(j.On.Local.Table, j.On.Foreign.Column)])
 	}
+
 	filter.Op = db.OpInclude
 	filter.Right = parser.Value{
 		Value: cols,
@@ -157,7 +130,30 @@ func (e *Evaluator) evalJoin(ctx context.Context, res []object.Row, j parser.Joi
 
 	rows, err := e.scan(ctx, j.Table, filter)
 	if err != nil {
-		return fmt.Errorf("eval from: %w", err)
+		return nil, fmt.Errorf("join %s table: %w", j.Table, err)
+	}
+
+	// prefix cols with table name, like users.id
+	for _, r := range rows {
+		newValues := make(object.Row)
+		for k, v := range r {
+			newValues[key(j.Table, k)] = v
+		}
+		maps.Copy(r, newValues)
+		for k := range r {
+			if _, isNewKey := newValues[k]; !isNewKey {
+				delete(r, k)
+			}
+		}
+	}
+
+	return rows, nil
+}
+
+func (e *Evaluator) evalJoin(ctx context.Context, cache []object.Row, j parser.Join) error {
+	rows, err := e.joinScan(ctx, cache, j)
+	if err != nil {
+		return err
 	}
 
 	byCol := make(map[any][]object.Row, len(rows))
@@ -166,7 +162,7 @@ func (e *Evaluator) evalJoin(ctx context.Context, res []object.Row, j parser.Joi
 		byCol[r[k]] = append(byCol[r[k]], r)
 	}
 
-	for _, r := range res {
+	for _, r := range cache {
 		k := key(j.On.Local.Table, j.On.Local.Column)
 		col := r[k]
 		joined, ok := byCol[col]
@@ -175,7 +171,7 @@ func (e *Evaluator) evalJoin(ctx context.Context, res []object.Row, j parser.Joi
 			for i := range joined[1:] {
 				joinedR := maps.Clone(r)
 				maps.Copy(joinedR, joined[i])
-				res = append(res, joinedR)
+				cache = append(cache, joinedR)
 			}
 		}
 	}
@@ -253,20 +249,6 @@ func (e *Evaluator) scan(ctx context.Context, table object.Table, filters ...par
 	err := e.client.Scan(ctx, table, &rows, f...)
 	if err != nil {
 		return nil, err
-	}
-
-	// prefix cols with table name, like users.id
-	for _, r := range rows {
-		newValues := make(object.Row)
-		for k, v := range r {
-			newValues[key(table, k)] = v
-		}
-		maps.Copy(r, newValues)
-		for k := range r {
-			if _, isNewKey := newValues[k]; !isNewKey {
-				delete(r, k)
-			}
-		}
 	}
 
 	return filter(rows, filters), nil

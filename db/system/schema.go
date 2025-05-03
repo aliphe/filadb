@@ -10,6 +10,8 @@ import (
 	"github.com/aliphe/filadb/db/table"
 )
 
+type DatabaseShape map[object.Table]*schema.Schema
+
 type SchemaRegistry struct {
 	tables  *table.Querier[internalTableTables]
 	columns *table.Querier[internalTableColumns]
@@ -34,6 +36,30 @@ func (sr *SchemaRegistry) Create(ctx context.Context, sch *schema.Schema) error 
 	}
 
 	return nil
+}
+
+func (sr *SchemaRegistry) Shape(ctx context.Context) (DatabaseShape, error) {
+	var tables []internalTableTables
+	err := sr.tables.Scan(ctx, &tables)
+	if err != nil {
+		return nil, err
+	}
+
+	schemas := make([]*schema.Schema, 0, len(tables))
+	for _, t := range tables {
+		sch, err := sr.loadSchema(context.Background(), object.Table(t.Table))
+		if err != nil {
+			return nil, err
+		}
+		schemas = append(schemas, sch)
+	}
+
+	byTable := make(map[object.Table]*schema.Schema, len(schemas))
+	for _, sch := range schemas {
+		byTable[sch.Table] = sch
+	}
+
+	return byTable, nil
 }
 
 func (sr *SchemaRegistry) Get(ctx context.Context, table object.Table) (*schema.Schema, error) {

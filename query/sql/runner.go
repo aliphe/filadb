@@ -8,6 +8,7 @@ import (
 	"github.com/aliphe/filadb/query/sql/eval"
 	"github.com/aliphe/filadb/query/sql/lexer"
 	"github.com/aliphe/filadb/query/sql/parser"
+	"github.com/aliphe/filadb/query/sql/validation"
 )
 
 type Runner struct {
@@ -25,13 +26,25 @@ func (r *Runner) Run(ctx context.Context, expr string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	ast, err := parser.Parse(tokens)
+
+	q, err := parser.Parse(tokens)
 	if err != nil {
 		return nil, fmt.Errorf("parsing expression: %w", err)
 	}
 
+	shape, err := r.db.Shape(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	sc := validation.NewSanityChecker(shape)
+
+	if err := sc.Check(q); err != nil {
+		return nil, err
+	}
+
 	eval := eval.New(r.db)
-	out, err := eval.EvalExpr(ctx, ast)
+	out, err := eval.EvalExpr(ctx, q)
 	if err != nil {
 		return nil, fmt.Errorf("eval expression: %w", err)
 	}

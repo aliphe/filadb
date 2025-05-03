@@ -92,6 +92,7 @@ type Select struct {
 
 type Join struct {
 	Table object.Table
+	Alias object.Table
 	On    On
 }
 
@@ -127,7 +128,7 @@ const (
 	ValueTypeList
 )
 
-func Parse(tokens []*lexer.Token) (SQLQuery, error) {
+func Parse(tokens []*lexer.Token) (*SQLQuery, error) {
 	in := newExpr(tokens)
 	out := SQLQuery{}
 
@@ -138,12 +139,12 @@ func Parse(tokens []*lexer.Token) (SQLQuery, error) {
 		is(lexer.KindUpdate),
 	))
 	if err != nil {
-		return SQLQuery{}, err
+		return nil, err
 	}
 	if cur[0].Kind == lexer.KindSelect {
 		sel, exp, err := parseSelect(expr)
 		if err != nil {
-			return SQLQuery{}, err
+			return nil, err
 		}
 		out.Select = sel
 		out.Type = QueryTypeSelect
@@ -151,7 +152,7 @@ func Parse(tokens []*lexer.Token) (SQLQuery, error) {
 	} else if cur[0].Kind == lexer.KindInsert {
 		ins, exp, err := parseInsert(expr)
 		if err != nil {
-			return SQLQuery{}, err
+			return nil, err
 		}
 		out.Insert = ins
 		out.Type = QueryTypeInsert
@@ -159,7 +160,7 @@ func Parse(tokens []*lexer.Token) (SQLQuery, error) {
 	} else if cur[0].Kind == lexer.KindUpdate {
 		up, exp, err := parseUpdate(expr)
 		if err != nil {
-			return SQLQuery{}, err
+			return nil, err
 		}
 		out.Update = up
 		out.Type = QueryTypeUpdate
@@ -167,28 +168,28 @@ func Parse(tokens []*lexer.Token) (SQLQuery, error) {
 	} else if cur[0].Kind == lexer.KindCreate {
 		create, exp, err := parseCreate(expr)
 		if err != nil {
-			return SQLQuery{}, err
+			return nil, err
 		}
 		out.Create = create
 		out.Type = QueryTypeCreate
 		expr = exp
 	} else {
-		return SQLQuery{}, newUnexpectedTokenError(cur[0], lexer.KindCreate, lexer.KindSelect, lexer.KindInsert, lexer.KindUpdate)
+		return nil, newUnexpectedTokenError(cur[0], lexer.KindCreate, lexer.KindSelect, lexer.KindInsert, lexer.KindUpdate)
 	}
 	_, exp, err := expr.read(is(lexer.KindSemiColumn))
 	if err != nil {
 		if !errors.Is(err, io.EOF) {
-			return SQLQuery{}, err
+			return nil, err
 		}
 	} else {
 		expr = exp
 	}
 
 	if expr.cursor < len(in.tokens)-1 {
-		return SQLQuery{}, newUnexpectedTokenError(tokens[expr.cursor])
+		return nil, newUnexpectedTokenError(tokens[expr.cursor])
 	}
 
-	return out, nil
+	return &out, nil
 }
 
 func parseUpdate(in *expr) (Update, *expr, error) {
@@ -411,37 +412,6 @@ func parseCSV(in *expr) ([]any, *expr, error) {
 		}
 	}
 	return row, expr, nil
-}
-
-func parseRow(in *expr) (object.Row, *expr, error) {
-	_, expr, err := in.read(is(lexer.KindOpenParen))
-	if err != nil {
-		return nil, nil, err
-	}
-	out := make(object.Row)
-	for {
-		cur, exp, err := expr.read(
-			is(lexer.KindIdentifier),
-			is(lexer.KindEqual),
-			oneOf(is(lexer.KindText), is(lexer.KindNumber)),
-			oneOf(is(lexer.KindCloseParen), is(lexer.KindComma)),
-		)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		expr = exp
-		propName, ok := cur[0].Value.(string)
-		if !ok {
-			return nil, nil, fmt.Errorf("invalid property name %v", cur[0].Value)
-		}
-		out[propName] = cur[2].Value
-
-		if cur[3].Kind == lexer.KindCloseParen {
-			break
-		}
-	}
-	return out, expr, nil
 }
 
 func parseKeyValuePairs(in *expr) ([]schema.Column, *expr, error) {
@@ -676,12 +646,12 @@ func parseJoin(in *expr) (*Join, *expr, error) {
 		is(lexer.KindOn),
 	)
 
+	table := object.Table(cur[0].Value.(string))
+
 	filter, expr, err := parseFilter(expr)
 	if err != nil {
 		return nil, nil, err
 	}
-
-	table := object.Table(cur[0].Value.(string))
 
 	var on On
 

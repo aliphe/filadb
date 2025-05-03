@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/aliphe/filadb/db"
+	"github.com/aliphe/filadb/db/object"
 	"github.com/aliphe/filadb/query/sql/lexer"
 	"github.com/google/go-cmp/cmp"
 )
@@ -20,17 +21,17 @@ func Test_Parse(t *testing.T) {
 				Type: QueryTypeSelect,
 				Select: Select{
 					Fields: []Field{{Column: "*"}},
-					From:   "USERS",
+					From:   "users",
 				},
 			},
 		},
 		{
-			given: "SELECT * FROM USERS WHERE id = '1' and name = 'john'",
+			given: "SELECT email FROM USERS WHERE id = '1' and name = 'john'",
 			want: SQLQuery{
 				Type: QueryTypeSelect,
 				Select: Select{
-					Fields: []Field{{Column: "*"}},
-					From:   "USERS",
+					Fields: []Field{{Column: "email"}},
+					From:   "users",
 					Filters: []Filter{
 						{
 							Left: Value{
@@ -56,6 +57,35 @@ func Test_Parse(t *testing.T) {
 							Right: Value{
 								Type:  ValueTypeLitteral,
 								Value: "john",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			given: `UPDATE users SET email = 'new@email.com' where id = 1;`,
+			want: SQLQuery{
+				Type: QueryTypeUpdate,
+				Update: Update{
+					From: "users",
+					Set: Set{
+						Update: object.Row{
+							"email": "new@email.com",
+						},
+					},
+					Filters: []Filter{
+						{
+							Left: Value{
+								Type: ValueTypeReference,
+								Reference: Field{
+									Column: "id",
+								},
+							},
+							Op: db.OpEqual,
+							Right: Value{
+								Type:  ValueTypeLitteral,
+								Value: int32(1),
 							},
 						},
 					},

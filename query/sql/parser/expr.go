@@ -88,16 +88,3 @@ func oneOf(a ...assertion) assertion {
 		return newUnexpectedTokenError(t[0])
 	}
 }
-
-func dedup[S comparable](s []S) []S {
-	kv := make(map[S]bool, len(s))
-	for _, k := range s {
-		kv[k] = true
-	}
-
-	out := make([]S, len(kv))
-	for k := range kv {
-		out = append(out, k)
-	}
-	return out
-}

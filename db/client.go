@@ -8,11 +8,13 @@ import (
 	"github.com/aliphe/filadb/db/object"
 	"github.com/aliphe/filadb/db/schema"
 	"github.com/aliphe/filadb/db/storage"
+	"github.com/aliphe/filadb/db/system"
 )
 
 type schemaStore interface {
 	Create(ctx context.Context, sch *schema.Schema) error
 	Get(ctx context.Context, table object.Table) (*schema.Schema, error)
+	Shape(ctx context.Context) (system.DatabaseShape, error)
 }
 
 type indexStore interface {
@@ -218,13 +220,13 @@ func (c *Client) CreateSchema(ctx context.Context, sch *schema.Schema) error {
 	return nil
 }
 
-func (c *Client) Shape(ctx context.Context, t object.Table) ([]string, error) {
+func (c *Client) GetSchema(ctx context.Context, t object.Table) (*schema.Schema, error) {
 	sch, err := c.schema.Get(ctx, t)
 	if err != nil {
 		return nil, err
 	}
 
-	return sch.Marshaler().Shape(), nil
+	return sch, nil
 }
 
 // Index functions
@@ -246,4 +248,8 @@ func (c *Client) CreateIndex(ctx context.Context, idx *index.Index) error {
 	}
 
 	return nil
+}
+
+func (c *Client) Shape(ctx context.Context) (map[object.Table]*schema.Schema, error) {
+	return c.schema.Shape(ctx)
 }
