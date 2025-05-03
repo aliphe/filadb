@@ -1,10 +1,19 @@
 package validation
 
 import (
+	"fmt"
+
 	"github.com/aliphe/filadb/db/object"
 	"github.com/aliphe/filadb/db/system"
 	"github.com/aliphe/filadb/query/sql/parser"
 )
+
+func key(table object.Table, column string) string {
+	if table != "" {
+		return fmt.Sprintf("%s.%s", table, column)
+	}
+	return column
+}
 
 type SanityChecker struct {
 	shape       system.DatabaseShape
@@ -18,7 +27,7 @@ func NewSanityChecker(shape system.DatabaseShape) *SanityChecker {
 	for t, sch := range shape {
 		for _, c := range sch.Columns {
 			colMappings[c.Name] = append(colMappings[c.Name], t)
-			allCols[string(t)+c.Name] = true
+			allCols[key(t, c.Name)] = true
 		}
 	}
 
@@ -53,13 +62,13 @@ func (sc *SanityChecker) checkFields(fields []parser.Field) error {
 		if f.Table == "" {
 			tables := sc.colMappings[f.Column]
 			if len(tables) == 0 {
-				return ErrReferenceNotFound
+				return fmt.Errorf("%s: %w", f.Column, ErrReferenceNotFound)
 			} else if len(tables) > 1 {
-				return ErrAmbiguousReference
+				return fmt.Errorf("%s: %w", f.Column, ErrAmbiguousReference)
 			}
 		} else {
-			if _, ok := sc.allCols[string(f.Table)+f.Column]; !ok {
-				return ErrReferenceNotFound
+			if _, ok := sc.allCols[key(f.Table, f.Column)]; !ok {
+				return fmt.Errorf("%s: %w", key(f.Table, f.Column), ErrReferenceNotFound)
 			}
 		}
 	}
