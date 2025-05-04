@@ -6,6 +6,7 @@ import (
 
 	"github.com/aliphe/filadb/btree"
 	"github.com/aliphe/filadb/btree/file"
+	"github.com/aliphe/filadb/cmd/query/app/handler"
 	"github.com/aliphe/filadb/cmd/query/app/tcp"
 	"github.com/aliphe/filadb/db"
 	"github.com/aliphe/filadb/db/system"
@@ -13,7 +14,8 @@ import (
 )
 
 type options struct {
-	fileOpts []file.Option
+	fileOpts    []file.Option
+	handlerOpts []handler.Option
 }
 
 type Option func(*options)
@@ -21,6 +23,12 @@ type Option func(*options)
 func WithFileOptions(opts ...file.Option) Option {
 	return func(o *options) {
 		o.fileOpts = opts
+	}
+}
+
+func WithHandlerOptions(opts ...handler.Option) Option {
+	return func(o *options) {
+		o.handlerOpts = opts
 	}
 }
 
@@ -47,7 +55,7 @@ func Run(ctx context.Context, opts ...Option) error {
 	db := db.NewClient(btree, schema, index)
 	q := sql.NewRunner(db)
 
-	server, err := tcp.NewServer(q)
+	server, err := tcp.NewServer(q, opt.handlerOpts...)
 	if err != nil {
 		return err
 	}

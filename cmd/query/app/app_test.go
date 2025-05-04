@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/aliphe/filadb/btree/file"
+	"github.com/aliphe/filadb/cmd/query/app/handler"
 )
 
 func Test_Run(t *testing.T) {
@@ -96,17 +97,24 @@ func Test_Run(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			// t.Parallel()
+			t.Parallel()
 			dir := t.TempDir()
 			t.Log("DIR", dir)
-			// err := os.RemoveAll(dir)
+
+			// initialise a listener on a random port to retrieve a valid one.
+			listener, err := net.Listen("tcp", ":0")
+			if err != nil {
+				t.Fatal(err)
+			}
+			addr := listener.Addr().String()
+			listener.Close()
 
 			ctx, cancel := context.WithCancel(t.Context())
-			go Run(ctx, WithFileOptions(file.WithPath(dir)))
+			go Run(ctx, WithFileOptions(file.WithPath(dir)), WithHandlerOptions(handler.WithAddr(addr)))
 
 			time.Sleep(50 * time.Millisecond)
 
-			conn, err := net.Dial("tcp", ":5432")
+			conn, err := net.Dial("tcp", addr)
 			if err != nil {
 				t.Fatal(err)
 			}
