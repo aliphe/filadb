@@ -43,7 +43,7 @@ func (r *Runner) Run(ctx context.Context, expr string) ([]byte, error) {
 		return nil, err
 	}
 
-	eval := eval.New(r.db)
+	eval := eval.New(r.db, shape)
 	out, err := eval.EvalExpr(ctx, q)
 	if err != nil {
 		return nil, fmt.Errorf("eval expression: %w", err)

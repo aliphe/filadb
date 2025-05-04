@@ -54,7 +54,7 @@ func Test_Check(t *testing.T) {
 		"ambigious select query": {
 			shape: system.NewDatabaseShape([]*schema.Schema{
 				{
-					Table: "user",
+					Table: "users",
 					Columns: []schema.Column{
 						{
 							Name: "id",
@@ -67,7 +67,7 @@ func Test_Check(t *testing.T) {
 					},
 				},
 				{
-					Table: "post",
+					Table: "posts",
 					Columns: []schema.Column{
 						{
 							Name: "id",
@@ -85,6 +85,42 @@ func Test_Check(t *testing.T) {
 				},
 			}),
 			given: "select id, post.title from users join posts on posts.user_id = users.id;",
+			want:  ErrAmbiguousReference,
+		},
+		"1": {
+			shape: system.NewDatabaseShape([]*schema.Schema{
+				{
+					Table: "users",
+					Columns: []schema.Column{
+						{
+							Name: "id",
+							Type: schema.ColumnTypeText,
+						},
+						{
+							Name: "name",
+							Type: schema.ColumnTypeText,
+						},
+					},
+				},
+				{
+					Table: "posts",
+					Columns: []schema.Column{
+						{
+							Name: "id",
+							Type: schema.ColumnTypeText,
+						},
+						{
+							Name: "user_id",
+							Type: schema.ColumnTypeText,
+						},
+						{
+							Name: "title",
+							Type: schema.ColumnTypeText,
+						},
+					},
+				},
+			}),
+			given: "SELECT id, name FROM users where id IN (1,2);",
 			want:  ErrAmbiguousReference,
 		},
 	}

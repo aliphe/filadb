@@ -2,9 +2,11 @@ package system
 
 import (
 	"context"
+	"errors"
 
 	"github.com/aliphe/filadb/db/object"
 	"github.com/aliphe/filadb/db/schema"
+	"github.com/aliphe/filadb/db/storage"
 )
 
 type DatabaseShape struct {
@@ -43,11 +45,18 @@ func (sr *SchemaRegistry) Shape(ctx context.Context) (*DatabaseShape, error) {
 	var tables []internalTableTables
 	err := sr.tables.Scan(ctx, &tables)
 	if err != nil {
+		if errors.Is(storage.ErrTableNotFound, err) {
+			return NewDatabaseShape(nil), nil
+		}
 		return nil, err
 	}
 
 	schemas := make([]*schema.Schema, 0, len(tables))
 	for _, t := range tables {
+		// a bit hackish, but internal tables like indexes need to be filtered out for now
+		if !t.Public() {
+			continue
+		}
 		sch, err := sr.loadSchema(context.Background(), object.Table(t.Table))
 		if err != nil {
 			return nil, err

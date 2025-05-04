@@ -12,17 +12,20 @@ import (
 	"github.com/aliphe/filadb/db/index"
 	"github.com/aliphe/filadb/db/object"
 	"github.com/aliphe/filadb/db/schema"
+	"github.com/aliphe/filadb/db/system"
 	"github.com/aliphe/filadb/query/sql/parser"
 	"github.com/google/uuid"
 )
 
 type Evaluator struct {
 	client *db.Client
+	shape  *system.DatabaseShape
 }
 
-func New(client *db.Client) *Evaluator {
+func New(client *db.Client, shape *system.DatabaseShape) *Evaluator {
 	return &Evaluator{
 		client: client,
+		shape:  shape,
 	}
 }
 
@@ -69,6 +72,8 @@ func (e *Evaluator) evalUpdate(ctx context.Context, update parser.Update) (int, 
 		return 0, fmt.Errorf("eval from: %w", err)
 	}
 
+	rows = unprefix(rows)
+
 	for i, r := range rows {
 		maps.Copy(r, update.Set.Update)
 		if err := e.client.UpdateRow(ctx, update.From, r); err != nil {
@@ -110,7 +115,7 @@ func (e *Evaluator) joinScan(ctx context.Context, cache []object.Row, j parser.J
 	}
 	cols := make([]any, 0, len(cache))
 	for _, r := range cache {
-		cols = append(cols, r[object.Key(j.On.Local.Table, j.On.Foreign.Column)])
+		cols = append(cols, r[object.Key(j.On.Local.Table, j.On.Local.Column)])
 	}
 
 	filter.Op = db.OpInclude
@@ -122,20 +127,6 @@ func (e *Evaluator) joinScan(ctx context.Context, cache []object.Row, j parser.J
 	rows, err := e.scan(ctx, j.Table, filter)
 	if err != nil {
 		return nil, fmt.Errorf("join %s table: %w", j.Table, err)
-	}
-
-	// prefix cols with table name, like users.id
-	for _, r := range rows {
-		newValues := make(object.Row)
-		for k, v := range r {
-			newValues[object.Key(j.Table, k)] = v
-		}
-		maps.Copy(r, newValues)
-		for k := range r {
-			if _, isNewKey := newValues[k]; !isNewKey {
-				delete(r, k)
-			}
-		}
 	}
 
 	return rows, nil
@@ -200,7 +191,7 @@ func (e *Evaluator) evalSelect(ctx context.Context, sel parser.Select) ([]byte, 
 	out += "\n"
 	for _, row := range from {
 		for i, f := range fields {
-			out += fmt.Sprint(row[object.Key(f.Table, f.Column)])
+			out += fmt.Sprint(row[e.key(f.Table, f.Column)])
 			if i < len(fields)-1 {
 				out += ","
 			}
@@ -209,6 +200,14 @@ func (e *Evaluator) evalSelect(ctx context.Context, sel parser.Select) ([]byte, 
 	}
 
 	return []byte(out), nil
+}
+
+func (e *Evaluator) key(table object.Table, col string) string {
+	if table == "" {
+		t := e.shape.ColMappings()[col][0]
+		return object.Key(t, col)
+	}
+	return object.Key(table, col)
 }
 
 func (e *Evaluator) evalInsert(ctx context.Context, ins parser.Insert) (int, error) {
@@ -242,13 +241,40 @@ func (e *Evaluator) scan(ctx context.Context, table object.Table, filters ...par
 		return nil, err
 	}
 
-	return filter(rows, filters), nil
+	return e.filter(prefix(table, rows), filters), nil
 }
 
-func filter(rows []object.Row, f []parser.Filter) []object.Row {
+// prefix adds table prefix to all columns in object
+func prefix(table object.Table, rows []object.Row) []object.Row {
+	out := make([]object.Row, 0, len(rows))
+	for _, r := range rows {
+		new := make(object.Row)
+		for k, v := range r {
+			new[object.Key(table, k)] = v
+		}
+		out = append(out, new)
+	}
+
+	return out
+}
+
+func unprefix(rows []object.Row) []object.Row {
+	out := make([]object.Row, 0, len(rows))
+	for _, r := range rows {
+		new := make(object.Row)
+		for k, v := range r {
+			new[object.ParseCol(k)] = v
+		}
+		out = append(out, new)
+	}
+
+	return out
+}
+
+func (e *Evaluator) filter(rows []object.Row, f []parser.Filter) []object.Row {
 	var out []object.Row
 	for _, r := range rows {
-		if matches(r, f) {
+		if e.matches(r, f) {
 			out = append(out, r)
 		}
 	}
@@ -256,7 +282,7 @@ func filter(rows []object.Row, f []parser.Filter) []object.Row {
 	return out
 }
 
-func matches(row object.Row, filters []parser.Filter) bool {
+func (e *Evaluator) matches(row object.Row, filters []parser.Filter) bool {
 	for _, f := range filters {
 		var ref parser.Field
 		var val any
@@ -267,7 +293,7 @@ func matches(row object.Row, filters []parser.Filter) bool {
 			val = f.Left.Value
 			ref = f.Right.Reference
 		}
-		lk := object.Key(ref.Table, ref.Column)
+		lk := e.key(ref.Table, ref.Column)
 		switch f.Op {
 		case db.OpEqual:
 			return row[lk] == val

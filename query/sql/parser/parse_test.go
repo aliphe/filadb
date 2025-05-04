@@ -12,26 +12,26 @@ import (
 func Test_Parse(t *testing.T) {
 	tests := []struct {
 		given   string
-		want    SQLQuery
+		want    *SQLQuery
 		wantErr error
 	}{
 		{
 			given: "SELECT * FROM USERS;",
-			want: SQLQuery{
+			want: &SQLQuery{
 				Type: QueryTypeSelect,
 				Select: Select{
 					Fields: []Field{{Column: "*"}},
-					From:   "users",
+					From:   "USERS",
 				},
 			},
 		},
 		{
 			given: "SELECT email FROM USERS WHERE id = '1' and name = 'john'",
-			want: SQLQuery{
+			want: &SQLQuery{
 				Type: QueryTypeSelect,
 				Select: Select{
 					Fields: []Field{{Column: "email"}},
-					From:   "users",
+					From:   "USERS",
 					Filters: []Filter{
 						{
 							Left: Value{
@@ -65,7 +65,7 @@ func Test_Parse(t *testing.T) {
 		},
 		{
 			given: `UPDATE users SET email = 'new@email.com' where id = 1;`,
-			want: SQLQuery{
+			want: &SQLQuery{
 				Type: QueryTypeUpdate,
 				Update: Update{
 					From: "users",
@@ -97,7 +97,7 @@ func Test_Parse(t *testing.T) {
 				SELECT posts.name FROM users
 				JOIN posts ON posts.user_id = users.id
 				WHERE posts.label = 'public' and users.name IN ('alice', 'bob');`,
-			want: SQLQuery{
+			want: &SQLQuery{
 				Type: QueryTypeSelect,
 				Select: Select{
 					Fields: []Field{
@@ -163,12 +163,12 @@ func Test_Parse(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Tokenize error: %v", err)
 			}
-			ast, err := Parse(tokens)
+			q, err := Parse(tokens)
 			if err != nil {
 				t.Fatalf("Parse error: %v", err)
 			}
 
-			if diff := cmp.Diff(tc.want, ast); diff != "" {
+			if diff := cmp.Diff(tc.want, q); diff != "" {
 				t.Fatalf("Parse() mismatch (-want +got):\n%s", diff)
 			}
 		})

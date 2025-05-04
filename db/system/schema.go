@@ -108,6 +108,10 @@ type internalTableTables struct {
 	Version int
 }
 
+func (t *internalTableTables) Public() bool {
+	return t.ID == object.ID(t.Table)
+}
+
 func (i internalTableTables) ObjectID() object.ID {
 	return i.ID
 }
