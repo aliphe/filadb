@@ -110,7 +110,7 @@ func (e *Evaluator) joinScan(ctx context.Context, cache []object.Row, j parser.J
 	}
 	cols := make([]any, 0, len(cache))
 	for _, r := range cache {
-		cols = append(cols, r[key(j.On.Local.Table, j.On.Foreign.Column)])
+		cols = append(cols, r[object.Key(j.On.Local.Table, j.On.Foreign.Column)])
 	}
 
 	filter.Op = db.OpInclude
@@ -128,7 +128,7 @@ func (e *Evaluator) joinScan(ctx context.Context, cache []object.Row, j parser.J
 	for _, r := range rows {
 		newValues := make(object.Row)
 		for k, v := range r {
-			newValues[key(j.Table, k)] = v
+			newValues[object.Key(j.Table, k)] = v
 		}
 		maps.Copy(r, newValues)
 		for k := range r {
@@ -149,12 +149,12 @@ func (e *Evaluator) evalJoin(ctx context.Context, cache []object.Row, j parser.J
 
 	byCol := make(map[any][]object.Row, len(rows))
 	for _, r := range rows {
-		k := key(j.On.Foreign.Table, j.On.Foreign.Column)
+		k := object.Key(j.On.Foreign.Table, j.On.Foreign.Column)
 		byCol[r[k]] = append(byCol[r[k]], r)
 	}
 
 	for _, r := range cache {
-		k := key(j.On.Local.Table, j.On.Local.Column)
+		k := object.Key(j.On.Local.Table, j.On.Local.Column)
 		col := r[k]
 		joined, ok := byCol[col]
 		if ok {
@@ -200,7 +200,7 @@ func (e *Evaluator) evalSelect(ctx context.Context, sel parser.Select) ([]byte, 
 	out += "\n"
 	for _, row := range from {
 		for i, f := range fields {
-			out += fmt.Sprint(row[key(f.Table, f.Column)])
+			out += fmt.Sprint(row[object.Key(f.Table, f.Column)])
 			if i < len(fields)-1 {
 				out += ","
 			}
@@ -256,14 +256,6 @@ func filter(rows []object.Row, f []parser.Filter) []object.Row {
 	return out
 }
 
-func key(table object.Table, col string) string {
-	if table != "" {
-		return string(fmt.Sprintf("%s.%s", table, col))
-	}
-
-	return col
-}
-
 func matches(row object.Row, filters []parser.Filter) bool {
 	for _, f := range filters {
 		var ref parser.Field
@@ -275,7 +267,7 @@ func matches(row object.Row, filters []parser.Filter) bool {
 			val = f.Left.Value
 			ref = f.Right.Reference
 		}
-		lk := key(ref.Table, ref.Column)
+		lk := object.Key(ref.Table, ref.Column)
 		switch f.Op {
 		case db.OpEqual:
 			return row[lk] == val
