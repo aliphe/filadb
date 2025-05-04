@@ -127,6 +127,7 @@ func Test_Check(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			sc := NewSanityChecker(tc.shape)
 
 			tokens, err := lexer.Tokenize(tc.given)

@@ -159,6 +159,7 @@ func Test_Parse(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.given, func(t *testing.T) {
+			t.Parallel()
 			tokens, err := lexer.Tokenize(tc.given)
 			if err != nil {
 				t.Fatalf("Tokenize error: %v", err)
