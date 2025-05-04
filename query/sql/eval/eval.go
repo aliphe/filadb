@@ -33,45 +33,36 @@ func raw(s string) []byte {
 func (e *Evaluator) EvalExpr(ctx context.Context, q *parser.SQLQuery) ([]byte, error) {
 	switch q.Type {
 	case parser.QueryTypeInsert:
-		{
-			n, err := e.evalInsert(ctx, q.Insert)
-			if err != nil {
-				return nil, err
-			}
-			return raw("INSERT " + strconv.Itoa(n)), nil
+		n, err := e.evalInsert(ctx, q.Insert)
+		if err != nil {
+			return nil, err
 		}
+		return raw("INSERT " + strconv.Itoa(n)), nil
 	case parser.QueryTypeSelect:
-		{
-			res, err := e.evalSelect(ctx, q.Select)
-			if err != nil {
-				return nil, err
-			}
-			return res, nil
+		res, err := e.evalSelect(ctx, q.Select)
+		if err != nil {
+			return nil, err
 		}
+		return res, nil
 	case parser.QueryTypeUpdate:
-		{
-			n, err := e.evalUpdate(ctx, q.Update)
-			if err != nil {
-				return nil, err
-			}
-			return raw("UPDATE " + strconv.Itoa(n)), nil
+		n, err := e.evalUpdate(ctx, q.Update)
+		if err != nil {
+			return nil, err
 		}
+		return raw("UPDATE " + strconv.Itoa(n)), nil
 	case parser.QueryTypeCreate:
-		{
-			if q.Create.Type == parser.CreateTypeIndex {
-				return raw("CREATE INDEX"), e.evalCreateIndex(ctx, q.Create.CreateIndex)
-			} else if q.Create.Type == parser.CreateTypeTable {
-				return raw("CREATE TABLE"), e.evalCreateTable(ctx, q.Create.CreateTable)
-			}
-			return nil, nil
+		switch q.Create.Type {
+		case parser.CreateTypeIndex:
+			return raw("CREATE INDEX"), e.evalCreateIndex(ctx, q.Create.CreateIndex)
+		case parser.CreateTypeTable:
+			return raw("CREATE TABLE"), e.evalCreateTable(ctx, q.Create.CreateTable)
+		default:
+			return nil, fmt.Errorf("unknown create type: %v", q.Create.Type)
 		}
 	default:
-		{
-			return nil, fmt.Errorf("%s not implemented", q.Type)
-		}
+		return nil, fmt.Errorf("%s not implemented", q.Type)
 	}
 }
-
 func (e *Evaluator) evalUpdate(ctx context.Context, update parser.Update) (int, error) {
 	rows, err := e.scan(ctx, update.From, update.Filters...)
 	if err != nil {

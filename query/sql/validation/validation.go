@@ -8,33 +8,13 @@ import (
 	"github.com/aliphe/filadb/query/sql/parser"
 )
 
-func key(table object.Table, column string) string {
-	if table != "" {
-		return fmt.Sprintf("%s.%s", table, column)
-	}
-	return column
-}
-
 type SanityChecker struct {
-	shape       system.DatabaseShape
-	colMappings map[string][]object.Table
-	allCols     map[string]bool
+	shape *system.DatabaseShape
 }
 
-func NewSanityChecker(shape system.DatabaseShape) *SanityChecker {
-	colMappings := make(map[string][]object.Table)
-	allCols := make(map[string]bool)
-	for t, sch := range shape {
-		for _, c := range sch.Columns {
-			colMappings[c.Name] = append(colMappings[c.Name], t)
-			allCols[key(t, c.Name)] = true
-		}
-	}
-
+func NewSanityChecker(shape *system.DatabaseShape) *SanityChecker {
 	return &SanityChecker{
-		shape:       shape,
-		colMappings: colMappings,
-		allCols:     allCols,
+		shape: shape,
 	}
 }
 
@@ -60,15 +40,15 @@ func (sc *SanityChecker) checkSelect(q *parser.Select) error {
 func (sc *SanityChecker) checkFields(fields []parser.Field) error {
 	for _, f := range fields {
 		if f.Table == "" {
-			tables := sc.colMappings[f.Column]
+			tables := sc.shape.ColMappings()[f.Column]
 			if len(tables) == 0 {
 				return fmt.Errorf("%s: %w", f.Column, ErrReferenceNotFound)
 			} else if len(tables) > 1 {
 				return fmt.Errorf("%s: %w", f.Column, ErrAmbiguousReference)
 			}
 		} else {
-			if _, ok := sc.allCols[key(f.Table, f.Column)]; !ok {
-				return fmt.Errorf("%s: %w", key(f.Table, f.Column), ErrReferenceNotFound)
+			if _, ok := sc.shape.AllCols()[object.Key(f.Table, f.Column)]; !ok {
+				return fmt.Errorf("%s: %w", object.Key(f.Table, f.Column), ErrReferenceNotFound)
 			}
 		}
 	}

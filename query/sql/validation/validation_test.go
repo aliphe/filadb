@@ -12,13 +12,13 @@ import (
 
 func Test_Check(t *testing.T) {
 	tests := map[string]struct {
-		shape system.DatabaseShape
+		shape *system.DatabaseShape
 		given string
 		want  error
 	}{
 		"valid select query": {
-			shape: system.DatabaseShape{
-				"users": {
+			shape: system.NewDatabaseShape([]*schema.Schema{
+				{
 					Table: "users",
 					Columns: []schema.Column{
 						{
@@ -31,7 +31,7 @@ func Test_Check(t *testing.T) {
 						},
 					},
 				},
-				"posts": {
+				{
 					Table: "posts",
 					Columns: []schema.Column{
 						{
@@ -47,13 +47,13 @@ func Test_Check(t *testing.T) {
 							Type: schema.ColumnTypeText,
 						},
 					},
-				},
-			},
+				}}),
 			given: "select users.id, posts.title from users join posts on posts.user_id = users.id;",
+			want:  nil,
 		},
 		"ambigious select query": {
-			shape: system.DatabaseShape{
-				"user": {
+			shape: system.NewDatabaseShape([]*schema.Schema{
+				{
 					Table: "user",
 					Columns: []schema.Column{
 						{
@@ -66,7 +66,7 @@ func Test_Check(t *testing.T) {
 						},
 					},
 				},
-				"post": {
+				{
 					Table: "post",
 					Columns: []schema.Column{
 						{
@@ -83,7 +83,7 @@ func Test_Check(t *testing.T) {
 						},
 					},
 				},
-			},
+			}),
 			given: "select id, post.title from users join posts on posts.user_id = users.id;",
 			want:  ErrAmbiguousReference,
 		},
