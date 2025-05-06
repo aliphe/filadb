@@ -161,6 +161,60 @@ func (e *Evaluator) evalJoin(ctx context.Context, cache []object.Row, j parser.J
 	return nil
 }
 
+func (e *Evaluator) outputCols(fields []parser.Field) []parser.Field {
+	out := make([]parser.Field, 0, len(fields))
+	for _, f := range fields {
+		if f.Column == "*" {
+			toAdd := make([]parser.Field, 0, len(e.shape.AllCols))
+			if f.Table == "" {
+				for t, cols := range e.shape.AllCols {
+					for c := range cols {
+						toAdd = append(toAdd, parser.Field{
+							Table:  t,
+							Column: c,
+						})
+					}
+				}
+			} else {
+				for c := range e.shape.AllCols[f.Table] {
+					toAdd = append(toAdd, parser.Field{
+						Table:  f.Table,
+						Column: c,
+					})
+				}
+			}
+			out = append(out, toAdd...)
+		} else {
+			out = append(out, f)
+		}
+	}
+
+	return out
+}
+
+func (e *Evaluator) formatRows(rows []object.Row, fields []parser.Field) []byte {
+	fields = e.outputCols(fields)
+	var out string
+	for i, f := range fields {
+		out += f.Column
+		if i < len(fields)-1 {
+			out += ","
+		}
+	}
+	out += "\n"
+	for _, row := range rows {
+		for i, f := range fields {
+			out += fmt.Sprint(row[e.key(f.Table, f.Column)])
+			if i < len(fields)-1 {
+				out += ","
+			}
+		}
+		out += "\n"
+	}
+
+	return []byte(out)
+}
+
 func (e *Evaluator) evalSelect(ctx context.Context, sel parser.Select) ([]byte, error) {
 	from, err := e.scan(ctx, sel.From, sel.Filters...)
 	if err != nil {
@@ -173,38 +227,12 @@ func (e *Evaluator) evalSelect(ctx context.Context, sel parser.Select) ([]byte, 
 		}
 	}
 
-	fields := make([]parser.Field, 0, len(sel.Fields))
-
-	for _, s := range sel.Fields {
-		if s.Column != "*" {
-			fields = append(fields, s)
-		}
-	}
-
-	var out string
-	for i, f := range fields {
-		out += f.Column
-		if i < len(fields)-1 {
-			out += ","
-		}
-	}
-	out += "\n"
-	for _, row := range from {
-		for i, f := range fields {
-			out += fmt.Sprint(row[e.key(f.Table, f.Column)])
-			if i < len(fields)-1 {
-				out += ","
-			}
-		}
-		out += "\n"
-	}
-
-	return []byte(out), nil
+	return e.formatRows(from, sel.Fields), nil
 }
 
 func (e *Evaluator) key(table object.Table, col string) string {
 	if table == "" {
-		t := e.shape.ColMappings()[col][0]
+		t := e.shape.ColMappings[col][0]
 		return object.Key(t, col)
 	}
 	return object.Key(table, col)

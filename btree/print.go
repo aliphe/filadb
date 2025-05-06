@@ -52,7 +52,7 @@ func (b *BTree[K]) printNode(n *Node[K], depth int) (string, error) {
 
 func printRef[K Key](r *Ref[K], depth int) string {
 	var out string
-	for i := 0; i < depth; i++ {
+	for range depth {
 		out = out + "  "
 	}
 	if r.From != nil {

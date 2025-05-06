@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
@@ -120,6 +121,7 @@ func (s *Server) handleRequest(q string) ([]byte, error) {
 	return res, nil
 }
 
+// readQueries reads queries from the given io.Reader, splitting them by semicolons.
 func readQueries(r io.Reader) ([]string, error) {
 	buf := make([]byte, 4084)
 
@@ -132,9 +134,10 @@ func readQueries(r io.Reader) ([]string, error) {
 	var j = 0
 	for i := range buf[:n] {
 		if buf[i] == ';' {
-			out = append(out, string(buf[j:i]))
-			j = i + i
+			out = append(out, strings.TrimSpace(string(buf[j:i])))
+			j = i + 1
 		}
 	}
+
 	return out, nil
 }

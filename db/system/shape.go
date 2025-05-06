@@ -11,19 +11,20 @@ import (
 
 type DatabaseShape struct {
 	schemas     map[object.Table]*schema.Schema
-	colMappings map[string][]object.Table
-	allCols     map[string]bool
+	ColMappings map[string][]object.Table
+	AllCols     map[object.Table]map[string]bool
 }
 
 func NewDatabaseShape(schemas []*schema.Schema) *DatabaseShape {
 	byTable := make(map[object.Table]*schema.Schema)
 	colMappings := make(map[string][]object.Table)
-	allCols := make(map[string]bool)
+	allCols := make(map[object.Table]map[string]bool)
 	for _, sch := range schemas {
 		byTable[sch.Table] = sch
+		allCols[sch.Table] = make(map[string]bool)
 		for _, c := range sch.Columns {
 			colMappings[c.Name] = append(colMappings[c.Name], sch.Table)
-			allCols[object.Key(sch.Table, c.Name)] = true
+			allCols[sch.Table][c.Name] = true
 		}
 	}
 	return &DatabaseShape{
@@ -31,14 +32,6 @@ func NewDatabaseShape(schemas []*schema.Schema) *DatabaseShape {
 		colMappings,
 		allCols,
 	}
-}
-
-func (d *DatabaseShape) ColMappings() map[string][]object.Table {
-	return d.colMappings
-}
-
-func (d *DatabaseShape) AllCols() map[string]bool {
-	return d.allCols
 }
 
 func (sr *SchemaRegistry) Shape(ctx context.Context) (*DatabaseShape, error) {

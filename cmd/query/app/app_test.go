@@ -21,7 +21,7 @@ func Test_Run(t *testing.T) {
 	tests := map[string]struct {
 		scenario []step
 	}{
-		"Read system tables": {
+		"Basic operations": {
 			scenario: []step{
 				{
 					given: "CREATE TABLE users (id NUMBER, email TEXT);",
@@ -44,7 +44,7 @@ func Test_Run(t *testing.T) {
 					want:  strings.Join([]string{"UPDATE 1", ">"}, "\n"),
 				},
 				{
-					given: "SELECT id, email FROM users where id IN (1,2);",
+					given: "SELECT * FROM users where id IN (1,2);",
 					want:  strings.Join([]string{"id,email", "1,test@tust.com", "2,new@email.com", ">"}, "\n"),
 				},
 			},

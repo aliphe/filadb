@@ -39,15 +39,18 @@ func (sc *SanityChecker) checkSelect(q *parser.Select) error {
 
 func (sc *SanityChecker) checkFields(fields []parser.Field) error {
 	for _, f := range fields {
+		if f.Column == "*" {
+			continue
+		}
 		if f.Table == "" {
-			tables := sc.shape.ColMappings()[f.Column]
+			tables := sc.shape.ColMappings[f.Column]
 			if len(tables) == 0 {
 				return fmt.Errorf("%s: %w", f.Column, ErrReferenceNotFound)
 			} else if len(tables) > 1 {
 				return fmt.Errorf("%s: %w", f.Column, ErrAmbiguousReference)
 			}
 		} else {
-			if _, ok := sc.shape.AllCols()[object.Key(f.Table, f.Column)]; !ok {
+			if _, ok := sc.shape.AllCols[f.Table][f.Column]; !ok {
 				return fmt.Errorf("%s: %w", object.Key(f.Table, f.Column), ErrReferenceNotFound)
 			}
 		}
