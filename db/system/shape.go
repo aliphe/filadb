@@ -10,7 +10,7 @@ import (
 )
 
 type DatabaseShape struct {
-	schemas     map[object.Table]*schema.Schema
+	Schemas     map[object.Table]*schema.Schema
 	ColMappings map[string][]object.Table
 	AllCols     map[object.Table]map[string]bool
 }

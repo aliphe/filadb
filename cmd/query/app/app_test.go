@@ -45,7 +45,7 @@ func Test_Run(t *testing.T) {
 				},
 				{
 					given: "SELECT * FROM users where id IN (1,2);",
-					want:  strings.Join([]string{"id,email", "1,test@tust.com", "2,new@email.com", ">"}, "\n"),
+					want:  strings.Join([]string{"email,id", "test@tust.com,1", "new@email.com,2", ">"}, "\n"),
 				},
 			},
 		},
@@ -88,8 +88,8 @@ func Test_Run(t *testing.T) {
 					want:  strings.Join([]string{"INSERT 1", ">"}, "\n"),
 				},
 				{
-					given: "SELECT users.email, posts.content FROM users JOIN posts ON users.id = posts.user_id;",
-					want:  strings.Join([]string{"email,content", "test@indexed.com,First post", ">"}, "\n"),
+					given: "SELECT users.email, posts.* FROM users JOIN posts ON users.id = posts.user_id;",
+					want:  strings.Join([]string{"email,content,id,user_id", "test@indexed.com,First post,1,1", ">"}, "\n"),
 				},
 			},
 		},
