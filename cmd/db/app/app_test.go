@@ -132,7 +132,7 @@ func Test_Run(t *testing.T) {
 			}
 
 			for _, step := range tc.scenario {
-				err := fnet.Send(conn, []byte(step.given))
+				err := fnet.Write(conn, []byte(step.given))
 				if err != nil {
 					t.Fatal(err)
 				}

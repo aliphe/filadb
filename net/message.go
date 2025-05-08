@@ -6,7 +6,7 @@ import (
 	"io"
 )
 
-func Send(conn io.Writer, res []byte) error {
+func Write(conn io.Writer, res []byte) error {
 	headerLen := uint32(len(res))
 
 	lenBuf := make([]byte, 4)

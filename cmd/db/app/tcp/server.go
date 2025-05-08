@@ -95,7 +95,7 @@ func (s *Server) handleClient(conn net.Conn) {
 				continue
 			}
 
-			err = fnet.Send(conn, out)
+			err = fnet.Write(conn, out)
 			if err != nil {
 				slog.Error("write response", slog.Any("err", err))
 				return
