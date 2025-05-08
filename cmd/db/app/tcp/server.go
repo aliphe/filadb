@@ -2,7 +2,6 @@ package tcp
 
 import (
 	"context"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -13,6 +12,7 @@ import (
 	"time"
 
 	"github.com/aliphe/filadb/cmd/db/app/handler"
+	fnet "github.com/aliphe/filadb/net"
 	"github.com/aliphe/filadb/query"
 )
 
@@ -95,29 +95,13 @@ func (s *Server) handleClient(conn net.Conn) {
 				continue
 			}
 
-			err = sendResponse(conn, out)
+			err = fnet.Send(conn, out)
 			if err != nil {
 				slog.Error("write response", slog.Any("err", err))
 				return
 			}
 		}
 	}
-}
-
-func sendResponse(conn net.Conn, res []byte) error {
-	headerLen := uint32(len(res))
-
-	lenBuf := make([]byte, 4)
-	binary.BigEndian.PutUint32(lenBuf, headerLen)
-
-	if _, err := conn.Write(lenBuf); err != nil {
-		return fmt.Errorf("failed to write header: %w", err)
-	}
-
-	if _, err := conn.Write(res); err != nil {
-		return fmt.Errorf("failed to write data: %w", err)
-	}
-	return nil
 }
 
 func (s *Server) handleRequest(q string) ([]byte, error) {
@@ -140,19 +124,15 @@ func (s *Server) handleRequest(q string) ([]byte, error) {
 
 // readQueries reads queries from the given io.Reader, splitting them by semicolons.
 func readQueries(r io.Reader) ([]string, error) {
-	buf := make([]byte, 4084)
-
-	n, err := r.Read(buf)
+	q, err := fnet.Read(r)
 	if err != nil {
 		return nil, err
 	}
 
-	var out []string
-	var j = 0
-	for i := range buf[:n] {
-		if buf[i] == ';' {
-			out = append(out, strings.TrimSpace(string(buf[j:i])))
-			j = i + 1
+	out := make([]string, 0, 1)
+	for part := range strings.SplitSeq(string(q), ";") {
+		if part != "" {
+			out = append(out, part)
 		}
 	}
 

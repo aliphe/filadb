@@ -2,9 +2,7 @@ package app
 
 import (
 	"context"
-	"encoding/binary"
 	"fmt"
-	"io"
 	"net"
 	"strings"
 	"testing"
@@ -12,6 +10,7 @@ import (
 
 	"github.com/aliphe/filadb/btree/file"
 	"github.com/aliphe/filadb/cmd/db/app/handler"
+	fnet "github.com/aliphe/filadb/net"
 )
 
 func Test_Run(t *testing.T) {
@@ -100,7 +99,6 @@ func Test_Run(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			dir := t.TempDir()
-			t.Log("DIR", dir)
 
 			// initialise a listener on a random port to retrieve a valid one.
 			listener, err := net.Listen("tcp", ":0")
@@ -121,20 +119,11 @@ func Test_Run(t *testing.T) {
 			}
 
 			for _, step := range tc.scenario {
-				_, err := conn.Write([]byte(step.given))
+				err := fnet.Send(conn, []byte(step.given))
 				if err != nil {
 					t.Fatal(err)
 				}
-				lenBuf := make([]byte, 4)
-				_, err = io.ReadFull(conn, lenBuf)
-				if err != nil {
-					t.Fatal(err)
-				}
-
-				resLen := binary.BigEndian.Uint32(lenBuf)
-
-				res := make([]byte, resLen)
-				_, err = io.ReadFull(conn, res)
+				res, err := fnet.Read(conn)
 				if err != nil {
 					t.Fatal(err)
 				}
