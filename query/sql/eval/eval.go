@@ -29,10 +29,6 @@ func New(client *db.Client, shape *system.DatabaseShape) *Evaluator {
 	}
 }
 
-func raw(s string) []byte {
-	return []byte(s + "\n")
-}
-
 func (e *Evaluator) EvalExpr(ctx context.Context, q *parser.SQLQuery) ([]byte, error) {
 	switch q.Type {
 	case parser.QueryTypeInsert:
@@ -40,7 +36,7 @@ func (e *Evaluator) EvalExpr(ctx context.Context, q *parser.SQLQuery) ([]byte, e
 		if err != nil {
 			return nil, err
 		}
-		return raw("INSERT " + strconv.Itoa(n)), nil
+		return []byte("INSERT " + strconv.Itoa(n)), nil
 	case parser.QueryTypeSelect:
 		res, err := e.evalSelect(ctx, q.Select)
 		if err != nil {
@@ -52,13 +48,13 @@ func (e *Evaluator) EvalExpr(ctx context.Context, q *parser.SQLQuery) ([]byte, e
 		if err != nil {
 			return nil, err
 		}
-		return raw("UPDATE " + strconv.Itoa(n)), nil
+		return []byte("UPDATE " + strconv.Itoa(n)), nil
 	case parser.QueryTypeCreate:
 		switch q.Create.Type {
 		case parser.CreateTypeIndex:
-			return raw("CREATE INDEX"), e.evalCreateIndex(ctx, q.Create.CreateIndex)
+			return []byte("CREATE INDEX"), e.evalCreateIndex(ctx, q.Create.CreateIndex)
 		case parser.CreateTypeTable:
-			return raw("CREATE TABLE"), e.evalCreateTable(ctx, q.Create.CreateTable)
+			return []byte("CREATE TABLE"), e.evalCreateTable(ctx, q.Create.CreateTable)
 		default:
 			return nil, fmt.Errorf("unknown create type: %v", q.Create.Type)
 		}
@@ -202,14 +198,16 @@ func (e *Evaluator) formatRows(rows []object.Row, fields []parser.Field) []byte 
 		}
 	}
 	out += "\n"
-	for _, row := range rows {
+	for i, row := range rows {
 		for i, f := range fields {
 			out += fmt.Sprint(row[e.key(f.Table, f.Column)])
 			if i < len(fields)-1 {
 				out += ","
 			}
 		}
-		out += "\n"
+		if i < len(rows)-1 {
+			out += "\n"
+		}
 	}
 
 	return []byte(out)

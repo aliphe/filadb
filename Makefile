@@ -1,5 +1,5 @@
 run:
-	go run ./cmd/query
+	go run ./cmd/db
 
 test:
 	go test ./... -cover

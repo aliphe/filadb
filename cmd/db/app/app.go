@@ -6,8 +6,8 @@ import (
 
 	"github.com/aliphe/filadb/btree"
 	"github.com/aliphe/filadb/btree/file"
-	"github.com/aliphe/filadb/cmd/query/app/handler"
-	"github.com/aliphe/filadb/cmd/query/app/tcp"
+	"github.com/aliphe/filadb/cmd/db/app/handler"
+	"github.com/aliphe/filadb/cmd/db/app/tcp"
 	"github.com/aliphe/filadb/db"
 	"github.com/aliphe/filadb/db/system"
 	"github.com/aliphe/filadb/query/sql"

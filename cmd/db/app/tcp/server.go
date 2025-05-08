@@ -2,6 +2,7 @@ package tcp
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -11,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aliphe/filadb/cmd/query/app/handler"
+	"github.com/aliphe/filadb/cmd/db/app/handler"
 	"github.com/aliphe/filadb/query"
 )
 
@@ -94,13 +95,29 @@ func (s *Server) handleClient(conn net.Conn) {
 				continue
 			}
 
-			_, err = conn.Write(append(out, []byte(">")...))
+			err = sendResponse(conn, out)
 			if err != nil {
 				slog.Error("write response", slog.Any("err", err))
 				return
 			}
 		}
 	}
+}
+
+func sendResponse(conn net.Conn, res []byte) error {
+	headerLen := uint32(len(res))
+
+	lenBuf := make([]byte, 4)
+	binary.BigEndian.PutUint32(lenBuf, headerLen)
+
+	if _, err := conn.Write(lenBuf); err != nil {
+		return fmt.Errorf("failed to write header: %w", err)
+	}
+
+	if _, err := conn.Write(res); err != nil {
+		return fmt.Errorf("failed to write data: %w", err)
+	}
+	return nil
 }
 
 func (s *Server) handleRequest(q string) ([]byte, error) {

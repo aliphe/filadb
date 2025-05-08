@@ -5,7 +5,7 @@ import (
 	"flag"
 	"log/slog"
 
-	"github.com/aliphe/filadb/cmd/query/app"
+	"github.com/aliphe/filadb/cmd/db/app"
 )
 
 var (
