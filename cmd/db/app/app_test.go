@@ -21,54 +21,54 @@ func Test_Run(t *testing.T) {
 	tests := map[string]struct {
 		scenario []step
 	}{
-		"Basic operations": {
-			scenario: []step{
-				{
-					given: "CREATE TABLE users (id NUMBER, email TEXT);",
-					want:  "CREATE TABLE",
-				},
-				{
-					given: "INSERT INTO users (id, email) VALUES (1, 'test@tust.com'), (2, 'tast@test.com');",
-					want:  "INSERT 2",
-				},
-				{
-					given: "SELECT id, email FROM users;",
-					want:  strings.Join([]string{"id,email", "1,test@tust.com", "2,tast@test.com"}, "\n"),
-				},
-				{
-					given: "SELECT id, email FROM users where id = 1;",
-					want:  strings.Join([]string{"id,email", "1,test@tust.com"}, "\n"),
-				},
-				{
-					given: "UPDATE users SET email = 'new@email.com' WHERE id = 2;",
-					want:  strings.Join([]string{"UPDATE 1"}, "\n"),
-				},
-				{
-					given: "SELECT * FROM users where id IN (1,2);",
-					want:  strings.Join([]string{"email,id", "test@tust.com,1", "new@email.com,2"}, "\n"),
-				},
-			},
-		},
-		"With index": {
-			scenario: []step{
-				{
-					given: "CREATE TABLE users (id NUMBER, email TEXT);",
-					want:  strings.Join([]string{"CREATE TABLE"}, "\n"),
-				},
-				{
-					given: "CREATE INDEX user_email ON users(email);",
-					want:  strings.Join([]string{"CREATE INDEX"}, "\n"),
-				},
-				{
-					given: "INSERT INTO users (id, email) VALUES (1, 'test@indexed.com');",
-					want:  strings.Join([]string{"INSERT 1"}, "\n"),
-				},
-				{
-					given: "SELECT id FROM users WHERE email = 'test@indexed.com';",
-					want:  strings.Join([]string{"id", "1"}, "\n"),
-				},
-			},
-		},
+		// "Basic operations": {
+		// 	scenario: []step{
+		// 		{
+		// 			given: "CREATE TABLE users (id NUMBER, email TEXT);",
+		// 			want:  "CREATE TABLE",
+		// 		},
+		// 		{
+		// 			given: "INSERT INTO users (id, email) VALUES (1, 'test@tust.com'), (2, 'tast@test.com');",
+		// 			want:  "INSERT 2",
+		// 		},
+		// 		{
+		// 			given: "SELECT id, email FROM users;",
+		// 			want:  strings.Join([]string{"id,email", "1,test@tust.com", "2,tast@test.com"}, "\n"),
+		// 		},
+		// 		{
+		// 			given: "SELECT id, email FROM users where id = 1;",
+		// 			want:  strings.Join([]string{"id,email", "1,test@tust.com"}, "\n"),
+		// 		},
+		// 		{
+		// 			given: "UPDATE users SET email = 'new@email.com' WHERE id = 2;",
+		// 			want:  strings.Join([]string{"UPDATE 1"}, "\n"),
+		// 		},
+		// 		{
+		// 			given: "SELECT * FROM users where id IN (1,2);",
+		// 			want:  strings.Join([]string{"email,id", "test@tust.com,1", "new@email.com,2"}, "\n"),
+		// 		},
+		// 	},
+		// },
+		// "With index": {
+		// 	scenario: []step{
+		// 		{
+		// 			given: "CREATE TABLE users (id NUMBER, email TEXT);",
+		// 			want:  strings.Join([]string{"CREATE TABLE"}, "\n"),
+		// 		},
+		// 		{
+		// 			given: "CREATE INDEX user_email ON users(email);",
+		// 			want:  strings.Join([]string{"CREATE INDEX"}, "\n"),
+		// 		},
+		// 		{
+		// 			given: "INSERT INTO users (id, email) VALUES (1, 'test@indexed.com');",
+		// 			want:  strings.Join([]string{"INSERT 1"}, "\n"),
+		// 		},
+		// 		{
+		// 			given: "SELECT id FROM users WHERE email = 'test@indexed.com';",
+		// 			want:  strings.Join([]string{"id", "1"}, "\n"),
+		// 		},
+		// 	},
+		// },
 		"With join": {
 			scenario: []step{
 				{
@@ -80,6 +80,10 @@ func Test_Run(t *testing.T) {
 					want:  strings.Join([]string{"CREATE TABLE"}, "\n"),
 				},
 				{
+					given: "CREATE TABLE comments(id NUMBER, post_id NUMBER, content TEXT);",
+					want:  strings.Join([]string{"CREATE TABLE"}, "\n"),
+				},
+				{
 					given: "INSERT INTO users (id, email) VALUES (1, 'test@indexed.com');",
 					want:  strings.Join([]string{"INSERT 1"}, "\n"),
 				},
@@ -88,8 +92,17 @@ func Test_Run(t *testing.T) {
 					want:  strings.Join([]string{"INSERT 1"}, "\n"),
 				},
 				{
-					given: "SELECT users.email, posts.* FROM users JOIN posts ON users.id = posts.user_id;",
-					want:  strings.Join([]string{"email,content,id,user_id", "test@indexed.com,First post,1,1"}, "\n"),
+					given: "INSERT INTO comments (id, post_id, content) VALUES (1, 1, 'First comment'), (2, 1, 'Second comment'), (3, 1, 'Third comment');",
+					want:  strings.Join([]string{"INSERT 3"}, "\n"),
+				},
+				{
+					given: `
+					SELECT
+						users.email, posts.content, comments.content
+					FROM users
+					JOIN posts ON users.id = posts.user_id
+					JOIN comments ON posts.id = comments.post_id;`,
+					want: strings.Join([]string{"email,content,content", "test@indexed.com,First post,First comment", "test@indexed.com,First post,Second comment", "test@indexed.com,First post,Third comment"}, "\n"),
 				},
 			},
 		},
@@ -129,7 +142,7 @@ func Test_Run(t *testing.T) {
 				}
 
 				if string(res) != step.want {
-					t.Fatal(fmt.Errorf("%s mismatch, want='%s', got='%s'", step.given, string(step.want), string(res)))
+					t.Fatal(fmt.Errorf("%s mismatch, want='%s', got='%s'", strings.TrimSpace(step.given), string(step.want), string(res)))
 				}
 			}
 

@@ -128,10 +128,10 @@ func (e *Evaluator) joinScan(ctx context.Context, cache []object.Row, j parser.J
 	return rows, nil
 }
 
-func (e *Evaluator) evalJoin(ctx context.Context, cache []object.Row, j parser.Join) error {
+func (e *Evaluator) evalJoin(ctx context.Context, cache []object.Row, j parser.Join) ([]object.Row, error) {
 	rows, err := e.joinScan(ctx, cache, j)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	byCol := make(map[any][]object.Row, len(rows))
@@ -148,13 +148,13 @@ func (e *Evaluator) evalJoin(ctx context.Context, cache []object.Row, j parser.J
 			maps.Copy(r, joined[0])
 			for i := range joined[1:] {
 				joinedR := maps.Clone(r)
-				maps.Copy(joinedR, joined[i])
+				maps.Copy(joinedR, joined[i+1])
 				cache = append(cache, joinedR)
 			}
 		}
 	}
 
-	return nil
+	return cache, nil
 }
 
 func (e *Evaluator) outputCols(fields []parser.Field) []parser.Field {
@@ -220,9 +220,11 @@ func (e *Evaluator) evalSelect(ctx context.Context, sel parser.Select) ([]byte, 
 	}
 
 	for _, j := range sel.Joins {
-		if err := e.evalJoin(ctx, from, j); err != nil {
+		res, err := e.evalJoin(ctx, from, j)
+		if err != nil {
 			return nil, err
 		}
+		from = res
 	}
 
 	return e.formatRows(from, sel.Fields), nil
