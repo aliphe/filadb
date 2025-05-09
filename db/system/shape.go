@@ -3,6 +3,7 @@ package system
 import (
 	"context"
 	"errors"
+	"slices"
 
 	"github.com/aliphe/filadb/db/object"
 	"github.com/aliphe/filadb/db/schema"
@@ -34,7 +35,7 @@ func NewDatabaseShape(schemas []*schema.Schema) *DatabaseShape {
 	}
 }
 
-func (sr *SchemaRegistry) Shape(ctx context.Context) (*DatabaseShape, error) {
+func (sr *SchemaRegistry) Shape(ctx context.Context, onlyTables []object.Table) (*DatabaseShape, error) {
 	var tables []internalTableTables
 	err := sr.tables.Scan(ctx, &tables)
 	if err != nil {
@@ -44,8 +45,11 @@ func (sr *SchemaRegistry) Shape(ctx context.Context) (*DatabaseShape, error) {
 		return nil, err
 	}
 
-	schemas := make([]*schema.Schema, 0, len(tables))
+	schemas := make([]*schema.Schema, 0, len(onlyTables))
 	for _, t := range tables {
+		if !slices.Contains(onlyTables, t.Table) {
+			continue
+		}
 		// a bit hackish, but internal tables like indexes need to be filtered out for now
 		if !t.Public() {
 			continue

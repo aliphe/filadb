@@ -161,25 +161,22 @@ func (e *Evaluator) outputCols(fields []parser.Field) []parser.Field {
 	out := make([]parser.Field, 0, len(fields))
 	for _, f := range fields {
 		if f.Column == "*" {
-			toAdd := make([]parser.Field, 0, len(e.shape.AllCols))
+			var tables []object.Table
 			if f.Table == "" {
-				for t, sch := range e.shape.Schemas {
-					for _, c := range sch.Columns {
-						toAdd = append(toAdd, parser.Field{
-							Table:  t,
-							Column: c.Name,
-						})
-					}
+				for t := range e.shape.Schemas {
+					tables = append(tables, t)
 				}
 			} else {
-				for _, c := range e.shape.Schemas[f.Table].Columns {
-					toAdd = append(toAdd, parser.Field{
-						Table:  f.Table,
+				tables = append(tables, f.Table)
+			}
+			for _, t := range tables {
+				for _, c := range e.shape.Schemas[t].Columns {
+					out = append(out, parser.Field{
+						Table:  t,
 						Column: c.Name,
 					})
 				}
 			}
-			out = append(out, toAdd...)
 		} else {
 			out = append(out, f)
 		}

@@ -14,7 +14,7 @@ import (
 type schemaStore interface {
 	Create(ctx context.Context, sch *schema.Schema) error
 	Get(ctx context.Context, table object.Table) (*schema.Schema, error)
-	Shape(ctx context.Context) (*system.DatabaseShape, error)
+	Shape(ctx context.Context, tables []object.Table) (*system.DatabaseShape, error)
 }
 
 type indexStore interface {
@@ -250,6 +250,6 @@ func (c *Client) CreateIndex(ctx context.Context, idx *index.Index) error {
 	return nil
 }
 
-func (c *Client) Shape(ctx context.Context) (*system.DatabaseShape, error) {
-	return c.schema.Shape(ctx)
+func (c *Client) Shape(ctx context.Context, tables []object.Table) (*system.DatabaseShape, error) {
+	return c.schema.Shape(ctx, tables)
 }

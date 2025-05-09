@@ -26,9 +26,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	addr := uri.Address()
-	fmt.Println(addr)
-
 	conn, err := net.Dial("tcp", uri.Address())
 	if err != nil {
 		log.Fatalf("connecting to database: %s", err)

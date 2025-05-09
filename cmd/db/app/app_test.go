@@ -96,12 +96,17 @@ func Test_Run(t *testing.T) {
 					want:  strings.Join([]string{"INSERT 3"}, "\n"),
 				},
 				{
+					given: "SELECT * FROM users where id = 1;",
+					want:  strings.Join([]string{"email,id", "test@indexed.com,1"}, "\n"),
+				},
+				{
 					given: `
 					SELECT
 						users.email, posts.content, comments.content
 					FROM users
 					JOIN posts ON users.id = posts.user_id
-					JOIN comments ON posts.id = comments.post_id;`,
+					JOIN comments ON posts.id = comments.post_id
+					WHERE users.id = 1;`,
 					want: strings.Join([]string{"email,content,content", "test@indexed.com,First post,First comment", "test@indexed.com,First post,Second comment", "test@indexed.com,First post,Third comment"}, "\n"),
 				},
 			},

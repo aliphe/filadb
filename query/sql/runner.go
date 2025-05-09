@@ -32,7 +32,7 @@ func (r *Runner) Run(ctx context.Context, expr string) ([]byte, error) {
 		return nil, fmt.Errorf("parsing expression: %w", err)
 	}
 
-	shape, err := r.db.Shape(ctx)
+	shape, err := r.db.Shape(ctx, q.Tables())
 	if err != nil {
 		return nil, err
 	}

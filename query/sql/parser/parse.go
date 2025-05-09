@@ -51,6 +51,19 @@ type SQLQuery struct {
 	Create Create
 }
 
+func (s *SQLQuery) Tables() []object.Table {
+	switch s.Type {
+	case QueryTypeSelect:
+		return s.Select.Tables()
+	case QueryTypeInsert:
+		return s.Insert.Tables()
+	case QueryTypeUpdate:
+		return s.Update.Tables()
+	default:
+		return nil
+	}
+}
+
 type Create struct {
 	Type        CreateType
 	CreateTable CreateTable
@@ -73,10 +86,18 @@ type Insert struct {
 	Rows  []object.Row
 }
 
+func (i *Insert) Tables() []object.Table {
+	return []object.Table{i.Table}
+}
+
 type Update struct {
 	From    object.Table
 	Set     Set
 	Filters []Filter
+}
+
+func (u *Update) Tables() []object.Table {
+	return []object.Table{u.From}
 }
 
 type Set struct {
@@ -88,6 +109,16 @@ type Select struct {
 	From    object.Table
 	Joins   []Join
 	Filters []Filter
+}
+
+func (s *Select) Tables() []object.Table {
+	out := make([]object.Table, 0, len(s.Joins)+1)
+	out = append(out, s.From)
+	for _, j := range s.Joins {
+		out = append(out, j.Table)
+	}
+
+	return out
 }
 
 type Join struct {
