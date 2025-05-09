@@ -20,7 +20,7 @@ func (a *marshaler) Shape() []string {
 	return out
 }
 
-func (a *marshaler) Marshal(obj interface{}) ([]byte, error) {
+func (a *marshaler) Marshal(obj any) ([]byte, error) {
 	w := new(bytes.Buffer)
 	enc := gob.NewEncoder(w)
 
@@ -31,7 +31,7 @@ func (a *marshaler) Marshal(obj interface{}) ([]byte, error) {
 	return w.Bytes(), nil
 }
 
-func (a *marshaler) Unmarshal(b []byte, dst interface{}) error {
+func (a *marshaler) Unmarshal(b []byte, dst any) error {
 	r := bytes.NewReader(b)
 	dec := gob.NewDecoder(r)
 
@@ -42,7 +42,7 @@ func (a *marshaler) Unmarshal(b []byte, dst interface{}) error {
 	return nil
 }
 
-func (a *marshaler) UnmarshalBatch(s [][]byte, dst interface{}) error {
+func (a *marshaler) UnmarshalBatch(s [][]byte, dst any) error {
 	dstValue := reflect.ValueOf(dst)
 	if dstValue.Kind() != reflect.Ptr || dstValue.Elem().Kind() != reflect.Slice {
 		return errors.New("dst must be a pointer to a slice")

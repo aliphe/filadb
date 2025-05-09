@@ -56,12 +56,12 @@ const (
 
 type Token struct {
 	Kind     Kind
-	Value    interface{}
+	Value    any
 	Len      int
 	Position int
 }
 
-func NewToken(t Kind, val interface{}, len int) *Token {
+func NewToken(t Kind, val any, len int) *Token {
 	return &Token{
 		Kind:  t,
 		Value: val,
