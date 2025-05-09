@@ -21,54 +21,54 @@ func Test_Run(t *testing.T) {
 	tests := map[string]struct {
 		scenario []step
 	}{
-		// "Basic operations": {
-		// 	scenario: []step{
-		// 		{
-		// 			given: "CREATE TABLE users (id NUMBER, email TEXT);",
-		// 			want:  "CREATE TABLE",
-		// 		},
-		// 		{
-		// 			given: "INSERT INTO users (id, email) VALUES (1, 'test@tust.com'), (2, 'tast@test.com');",
-		// 			want:  "INSERT 2",
-		// 		},
-		// 		{
-		// 			given: "SELECT id, email FROM users;",
-		// 			want:  strings.Join([]string{"id,email", "1,test@tust.com", "2,tast@test.com"}, "\n"),
-		// 		},
-		// 		{
-		// 			given: "SELECT id, email FROM users where id = 1;",
-		// 			want:  strings.Join([]string{"id,email", "1,test@tust.com"}, "\n"),
-		// 		},
-		// 		{
-		// 			given: "UPDATE users SET email = 'new@email.com' WHERE id = 2;",
-		// 			want:  strings.Join([]string{"UPDATE 1"}, "\n"),
-		// 		},
-		// 		{
-		// 			given: "SELECT * FROM users where id IN (1,2);",
-		// 			want:  strings.Join([]string{"email,id", "test@tust.com,1", "new@email.com,2"}, "\n"),
-		// 		},
-		// 	},
-		// },
-		// "With index": {
-		// 	scenario: []step{
-		// 		{
-		// 			given: "CREATE TABLE users (id NUMBER, email TEXT);",
-		// 			want:  strings.Join([]string{"CREATE TABLE"}, "\n"),
-		// 		},
-		// 		{
-		// 			given: "CREATE INDEX user_email ON users(email);",
-		// 			want:  strings.Join([]string{"CREATE INDEX"}, "\n"),
-		// 		},
-		// 		{
-		// 			given: "INSERT INTO users (id, email) VALUES (1, 'test@indexed.com');",
-		// 			want:  strings.Join([]string{"INSERT 1"}, "\n"),
-		// 		},
-		// 		{
-		// 			given: "SELECT id FROM users WHERE email = 'test@indexed.com';",
-		// 			want:  strings.Join([]string{"id", "1"}, "\n"),
-		// 		},
-		// 	},
-		// },
+		"Basic operations": {
+			scenario: []step{
+				{
+					given: "CREATE TABLE users (id NUMBER, email TEXT);",
+					want:  "CREATE TABLE",
+				},
+				{
+					given: "INSERT INTO users (id, email) VALUES (1, 'test@tust.com'), (2, 'tast@test.com');",
+					want:  "INSERT 2",
+				},
+				{
+					given: "SELECT id, email FROM users;",
+					want:  strings.Join([]string{"id,email", "1,test@tust.com", "2,tast@test.com"}, "\n"),
+				},
+				{
+					given: "SELECT id, email FROM users where id = 1;",
+					want:  strings.Join([]string{"id,email", "1,test@tust.com"}, "\n"),
+				},
+				{
+					given: "UPDATE users SET email = 'new@email.com' WHERE id = 2;",
+					want:  strings.Join([]string{"UPDATE 1"}, "\n"),
+				},
+				{
+					given: "SELECT * FROM users where id IN (1,2);",
+					want:  strings.Join([]string{"email,id", "test@tust.com,1", "new@email.com,2"}, "\n"),
+				},
+			},
+		},
+		"With index": {
+			scenario: []step{
+				{
+					given: "CREATE TABLE users (id NUMBER, email TEXT);",
+					want:  strings.Join([]string{"CREATE TABLE"}, "\n"),
+				},
+				{
+					given: "CREATE INDEX user_email ON users(email);",
+					want:  strings.Join([]string{"CREATE INDEX"}, "\n"),
+				},
+				{
+					given: "INSERT INTO users (id, email) VALUES (1, 'test@indexed.com');",
+					want:  strings.Join([]string{"INSERT 1"}, "\n"),
+				},
+				{
+					given: "SELECT id FROM users WHERE email = 'test@indexed.com';",
+					want:  strings.Join([]string{"id", "1"}, "\n"),
+				},
+			},
+		},
 		"With join": {
 			scenario: []step{
 				{
