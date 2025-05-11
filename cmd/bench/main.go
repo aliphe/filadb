@@ -1,32 +1,50 @@
 package main
 
 import (
-	"flag"
+	"context"
 	"log"
 	"net"
+	"os"
 	"strings"
 	"time"
 
+	"github.com/aliphe/filadb/btree/file"
 	"github.com/aliphe/filadb/cmd/bench/scenario"
+	"github.com/aliphe/filadb/cmd/db/app"
+	"github.com/aliphe/filadb/cmd/db/app/handler"
 	fnet "github.com/aliphe/filadb/net"
-	"github.com/aliphe/filadb/uri"
-)
-
-var (
-	database_uri = flag.String("database_uri", "filadb://127.0.0.1:5432", "uri of running filadb database instance")
 )
 
 func main() {
-	flag.Parse()
-
-	uri, err := uri.Parse(*database_uri)
+	// initialise a listener on a random port to retrieve a valid one.
+	listener, err := net.Listen("tcp", ":0")
 	if err != nil {
 		log.Fatal(err)
 	}
+	addr := listener.Addr().String()
+	listener.Close()
+	ctx := context.Background()
 
-	conn, err := net.Dial("tcp", uri.Address())
+	// init temp dir
+	dir, err := os.MkdirTemp(os.TempDir(), "bench-*")
 	if err != nil {
-		log.Fatalf("connecting to database: %s", err)
+		log.Fatal(err)
+	}
+	log.Println(dir)
+	defer func() {
+		if err := os.RemoveAll(dir); err != nil {
+			log.Fatalf("failed to remove dir %s: %s", dir, err)
+		}
+	}()
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	go app.Run(ctx, app.WithFileOptions(file.WithPath(dir)), app.WithHandlerOptions(handler.WithAddr(addr)))
+
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	if err := run(conn, scenario.Basic); err != nil {
