@@ -44,8 +44,12 @@ func Test_Run(t *testing.T) {
 					want:  strings.Join([]string{"UPDATE 1"}, "\n"),
 				},
 				{
-					given: "SELECT * FROM users where id IN (1,2);",
+					given: "SELECT * FROM users where id IN (1,2) LIMIT 10;",
 					want:  strings.Join([]string{"email,id", "test@tust.com,1", "new@email.com,2"}, "\n"),
+				},
+				{
+					given: "SELECT * FROM users where id IN (1,2) LIMIT 1;",
+					want:  strings.Join([]string{"email,id", "test@tust.com,1"}, "\n"),
 				},
 			},
 		},

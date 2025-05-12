@@ -225,7 +225,7 @@ func (e *Evaluator) evalSelect(ctx context.Context, sel parser.Select) ([]byte, 
 	}
 
 	count := len(from)
-	if l, hasLimit := sel.Limit.Get(); hasLimit {
+	if l, hasLimit := sel.Limit.Get(); hasLimit && int(l) <= count {
 		count = int(l)
 	}
 	return e.formatRows(from[:count], sel.Fields), nil
@@ -242,6 +242,8 @@ func (e *Evaluator) key(table object.Table, col string) string {
 func (e *Evaluator) evalInsert(ctx context.Context, ins parser.Insert) (int, error) {
 	for i, r := range ins.Rows {
 		if _, ok := r["id"]; !ok {
+			// todo make this depend on shape
+			// or even better -> use constraints
 			r["id"] = uuid.New().String()
 		}
 
