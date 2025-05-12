@@ -109,6 +109,18 @@ type Select struct {
 	From    object.Table
 	Joins   []Join
 	Filters []Filter
+	Limit   Limit
+}
+
+type Limit struct {
+	Limit *int32
+}
+
+func (l *Limit) Get() (int32, bool) {
+	if l.Limit != nil {
+		return *l.Limit, true
+	}
+	return 0, false
 }
 
 func (s *Select) Tables() []object.Table {
@@ -541,12 +553,34 @@ func parseSelect(in *expr) (Select, *expr, error) {
 		return Select{}, nil, err
 	}
 
+	limit, expr, err := parseLimit(expr)
+	if err != nil {
+		return Select{}, nil, err
+	}
+
 	return Select{
 		Fields:  fields,
 		From:    from,
 		Joins:   joins,
 		Filters: where,
+		Limit:   limit,
 	}, expr, nil
+}
+
+func parseLimit(in *expr) (Limit, *expr, error) {
+	r, expr, err := in.read(is(lexer.KindLimit), is(lexer.KindNumberLiteral))
+	if err != nil {
+		if errors.Is(io.EOF, err) {
+			return Limit{}, in, nil
+		}
+		return Limit{}, nil, err
+	}
+
+	limit, ok := r[1].Value.(int32)
+	if !ok {
+		return Limit{}, in, errors.New("failed to parse limit")
+	}
+	return Limit{Limit: &limit}, expr, nil
 }
 
 func parseFields(in *expr) ([]Field, *expr, error) {

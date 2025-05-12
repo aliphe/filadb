@@ -27,6 +27,7 @@ const (
 	KindOn     Kind = "ON"
 	KindJoin   Kind = "JOIN"
 	KindIn     Kind = "IN"
+	KindLimit  Kind = "LIMIT"
 
 	// System objects
 	KindTable Kind = "TABLE"
@@ -88,7 +89,7 @@ var matchers = []Matcher{
 			KindSelect, KindInsert, KindFrom, KindWhere, KindAnd, KindComma, KindSemiColumn,
 			KindEqual, KindAbove, KindBelow, KindInto, KindOpenParen, KindCloseParen,
 			KindValues, KindCreate, KindText, KindNumber, KindUpdate, KindSet, KindOn,
-			KindTable, KindIndex, KindJoin, KindDot, KindIn,
+			KindTable, KindIndex, KindJoin, KindDot, KindIn, KindLimit,
 		} {
 			_, ok := strings.CutPrefix(strings.ToLower(s), strings.ToLower(string(tok)))
 			if ok {

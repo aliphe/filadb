@@ -224,7 +224,11 @@ func (e *Evaluator) evalSelect(ctx context.Context, sel parser.Select) ([]byte, 
 		from = res
 	}
 
-	return e.formatRows(from, sel.Fields), nil
+	count := len(from)
+	if l, hasLimit := sel.Limit.Get(); hasLimit {
+		count = int(l)
+	}
+	return e.formatRows(from[:count], sel.Fields), nil
 }
 
 func (e *Evaluator) key(table object.Table, col string) string {

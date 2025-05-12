@@ -9,6 +9,10 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
+func ptr[T any](v T) *T {
+	return &v
+}
+
 func Test_Parse(t *testing.T) {
 	tests := []struct {
 		given   string
@@ -16,12 +20,13 @@ func Test_Parse(t *testing.T) {
 		wantErr error
 	}{
 		{
-			given: "SELECT * FROM USERS;",
+			given: "SELECT * FROM USERS LIMIT 10;",
 			want: &SQLQuery{
 				Type: QueryTypeSelect,
 				Select: Select{
 					Fields: []Field{{Column: "*"}},
 					From:   "USERS",
+					Limit:  Limit{Limit: ptr(int32(10))},
 				},
 			},
 		},
