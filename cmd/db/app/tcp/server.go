@@ -64,6 +64,11 @@ func (s *Server) Listen(ctx context.Context) error {
 
 		s.wg.Add(1)
 		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					slog.Info("panic recovered", slog.Any("err", r))
+				}
+			}()
 			s.handleClient(conn)
 			s.wg.Done()
 		}()
