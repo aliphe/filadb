@@ -8,7 +8,7 @@ import (
 	"github.com/aliphe/filadb/db/storage"
 )
 
-func (b *BTree[K]) Print(node string) (string, error) {
+func (b *BTree[K]) Print(ctx context.Context, node string) (string, error) {
 	root, ok, err := b.root(context.Background(), NodeID(node))
 	if err != nil {
 		return "", fmt.Errorf("acquire root: %w", err)
@@ -16,7 +16,7 @@ func (b *BTree[K]) Print(node string) (string, error) {
 	if !ok {
 		return "", storage.ErrTableNotFound
 	}
-	out, err := b.printNode(root, 0)
+	out, err := b.printNode(ctx, root)
 	if err != nil {
 		return "", err
 	}
@@ -24,54 +24,34 @@ func (b *BTree[K]) Print(node string) (string, error) {
 	return out, nil
 }
 
-func (b *BTree[K]) printNode(n *Node[K], depth int) (string, error) {
+func (b *BTree[K]) printNode(ctx context.Context, n *Node[K]) (string, error) {
 	if n.Leaf() {
-		vals := make([]string, 0, len(n.Keys()))
-		for i, v := range n.Keys() {
-			vals = append(vals, printVal(v.Key, depth, i == len(n.Keys())-1))
+		var out []string
+		for _, k := range n.keys {
+			out = append(out, string(k.Val))
 		}
-		return strings.Join(vals, "\n"), nil
+		return strings.Join(out, ","), nil
 	}
-	refs := make([]string, 0, len(n.Refs())*2)
-	for _, r := range n.Refs() {
-		refs = append(refs, printRef(r, depth))
-		s, ok, err := b.store.Find(context.Background(), r.N)
-		if !ok || err != nil {
-			return "", fmt.Errorf("find node %v: %w", r.N, err)
-		}
 
-		out, err := b.printNode(s, depth+1)
+	children := make([]string, 0, len(n.refs))
+	for _, c := range n.refs {
+		node, _, err := b.store.Find(ctx, c.N)
 		if err != nil {
 			return "", err
 		}
-		refs = append(refs, out)
-	}
-
-	return strings.Join(refs, "\n"), nil
-}
-
-func printRef[K Key](r *Ref[K], depth int) string {
-	var out string
-	for range depth {
-		out = out + "  "
-	}
-	if r.From != nil {
-		return out + fmt.Sprintf("└── %v", *r.From)
-	}
-	return ""
-}
-
-func printVal[K Key](k K, depth int, isLast bool) string {
-	var prefix string
-	for i := 0; i <= depth; i++ {
-		if i < depth {
-			prefix = prefix + "  "
-		} else if isLast {
-			prefix = prefix + "└──"
-		} else {
-			prefix = prefix + "├──"
+		sub, err := b.printNode(ctx, node)
+		if err != nil {
+			return "", err
 		}
+		from := "]-∞"
+		to := "∞["
+		if c.From != nil {
+			from = fmt.Sprintf("[%v", *c.From)
+		}
+		if c.To != nil {
+			to = fmt.Sprintf("%v[", *c.To)
+		}
+		children = append(children, fmt.Sprintf("%v;%v(%s)", from, to, sub))
 	}
-
-	return fmt.Sprintf("%s %v", prefix, k)
+	return strings.Join(children, ""), nil
 }

@@ -7,38 +7,50 @@ import (
 	"testing"
 
 	"github.com/aliphe/filadb/btree"
+	"github.com/google/go-cmp/cmp"
 )
 
 func Test_Btree(t *testing.T) {
 	tests := map[string]struct {
 		given []int
+		want  string
 		order int
 	}{
-		"order 3": {
+		"single layer": {
+			order: 30,
+			given: []int{1, 2, 3, 4, 5, 6},
+			want:  "1,2,3,4,5,6",
+		},
+		"two layers": {
 			order: 3,
-			given: []int{5, 4, 3, 2, 1, 0, 2, 4, 2, 1},
+			given: []int{1, 2, 3, 4, 5, 6},
+			want:  "]-∞;3[(1,2)[3;5[(3,4)[5;∞[(5,6)",
 		},
 	}
 
-	b, err := New[int](WithPath(".testdb"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer b.Close()
-	defer os.RemoveAll(".testdb")
-
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			b := btree.New(b, btree.WithOrder(tc.order))
-
-			for _, a := range tc.given {
-				b.Add(context.Background(), "root", a, []byte(strconv.Itoa(a)))
-			}
-			out, err := b.Print("root")
+			t.Parallel()
+			b, err := New[int](WithPath(t.TempDir()))
 			if err != nil {
 				t.Fatal(err)
 			}
-			t.Log("\n" + out)
+			defer b.Close()
+			defer os.RemoveAll(t.TempDir())
+			bt := btree.New(b, btree.WithOrder(tc.order))
+			ctx := context.Background()
+
+			for _, a := range tc.given {
+				bt.Add(ctx, "root", a, []byte(strconv.Itoa(a)))
+			}
+			out, err := bt.Print(ctx, "root")
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Log(out)
+			if diff := cmp.Diff(tc.want, out); diff != "" {
+				t.Fatalf("Print() mismatch (-want,+got): %s", diff)
+			}
 		})
 	}
 }
